@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PassOn – Campus Donate & Exchange</title>
+  <meta name="description" content="PassOn helps hostel students give away or exchange usable old items inside campus. DTIL project, Team G13.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="#browse" aria-label="PassOn home">
+        <span class="brand-mark" aria-hidden="true"></span>PassOn
+      </a>
+      <label class="zone">
+        <span class="sr">Campus zone</span>
+        <select id="zoneSelect"></select>
+      </label>
+    </div>
+    <nav class="tabs wrap" aria-label="Main">
+      <a href="#browse" data-tab="browse">Browse</a>
+      <a href="#add" data-tab="add">Give an item</a>
+      <a href="#ngo" data-tab="ngo">NGO connect</a>
+      <a href="#me" data-tab="me">My activity</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <p class="demo-note">Prototype with sample data. Items, people and NGOs below are made up for the DTIL demo.</p>
+
+    <!-- Browse -->
+    <section id="view-browse" class="view" hidden>
+      <div class="hero">
+        <h1>Old things, new hands, same campus.</h1>
+        <p>Give away or swap books, clothes, furniture and electronics with people in your hostel and department. No selling, no money.</p>
+      </div>
+      <div class="filters">
+        <input id="q" type="search" placeholder="Search items, e.g. mattress, notes, kettle" aria-label="Search items">
+        <div class="chips" id="catChips" role="group" aria-label="Category"></div>
+        <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
+      </div>
+      <p id="count" class="count" aria-live="polite"></p>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <!-- Add -->
+    <section id="view-add" class="view" hidden>
+      <h2>Give an item</h2>
+      <p class="lead">Takes under a minute. Add a photo, pick a mode, choose where it can be picked up.</p>
+      <form id="addForm" class="form" novalidate>
+        <div class="field">
+          <label for="fPhoto">Photo</label>
+          <input id="fPhoto" type="file" accept="image/*">
+          <img id="photoPrev" alt="Preview of the selected photo" hidden>
+        </div>
+        <div class="field">
+          <label for="fTitle">What is it?</label>
+          <input id="fTitle" type="text" maxlength="60" placeholder="e.g. Engineering Mathematics notes, 2 semesters" required>
+          <small class="err" id="eTitle" hidden>Add a short name for the item.</small>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="fCat">Category</label>
+            <select id="fCat"></select>
+          </div>
+          <div class="field">
+            <label for="fCond">Condition</label>
+            <select id="fCond">
+              <option>Like new</option>
+              <option selected>Good</option>
+              <option>Worn but usable</option>
+            </select>
+          </div>
+        </div>
+        <fieldset class="field">
+          <legend>Mode</legend>
+          <label class="radio"><input type="radio" name="mode" value="free" checked> Give for free</label>
+          <label class="radio"><input type="radio" name="mode" value="exchange"> Exchange for something</label>
+          <input id="fWant" type="text" maxlength="60" placeholder="What would you like in return?" hidden aria-label="Item wanted in return">
+        </fieldset>
+        <div class="row2">
+          <div class="field">
+            <label for="fZone">Pickup point</label>
+            <select id="fZone"></select>
+          </div>
+          <div class="field">
+            <label for="fNote">Note (optional)</label>
+            <input id="fNote" type="text" maxlength="80" placeholder="e.g. Available after 6 pm">
+          </div>
+        </div>
+        <label class="check"><input id="fClean" type="checkbox"> I have cleaned or sanitised this item</label>
+        <p class="hint">Buyers worry most about hygiene on used items like bedding and clothes. Tick this only if it is true.</p>
+        <button class="btn primary" type="submit">Post item</button>
+      </form>
+    </section>
+
+    <!-- NGO -->
+    <section id="view-ngo" class="view" hidden>
+      <h2>NGO connect</h2>
+      <p class="lead">If nobody on campus claims an item within 7 days, you can offer it to a nearby organisation for pickup.</p>
+      <div id="ngoList" class="ngo-list"></div>
+      <h3>Your unclaimed items</h3>
+      <div id="unclaimed" class="stack"></div>
+    </section>
+
+    <!-- Me -->
+    <section id="view-me" class="view" hidden>
+      <h2>My activity</h2>
+      <div class="stats" id="stats"></div>
+      <h3>My listings</h3>
+      <div id="myItems" class="stack"></div>
+      <h3>My requests</h3>
+      <div id="myReqs" class="stack"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>DTIL · Team G13 · SDG 12 Responsible Consumption and Production · Frontend prototype</p>
+  </footer>
+
+  <!-- Item detail -->
+  <dialog id="detail" aria-labelledby="dTitle">
+    <div class="dlg">
+      <button class="close" id="dClose" aria-label="Close">×</button>
+      <div id="dBody"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
