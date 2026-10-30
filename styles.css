@@ -49,7 +49,7 @@ a { color: var(--accent); }
 .top { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
 .top-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; }
 .brand { display: inline-flex; align-items: center; gap: 8px; font: 800 1.35rem var(--font-display); color: var(--ink); text-decoration: none; }
-.brand-mark { width: 22px; height: 22px; border-radius: 50% 50% 50% 4px; background: var(--accent); display: inline-block; }
+.brand-mark { height: 28px; width: auto; display: block; }
 .zone select { max-width: 52vw; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 8px; }
 .tabs a { padding: 8px 14px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 500; white-space: nowrap; }
