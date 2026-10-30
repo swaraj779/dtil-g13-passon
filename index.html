@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PassOn – Campus Donate & Exchange</title>
-  <meta name="description" content="PassOn helps hostel students give away or exchange usable old items inside campus. DTIL project, Team G13.">
+  <title>PassOn – Campus Give, Swap and Sell</title>
+  <meta name="description" content="PassOn helps hostel students give away, swap or sell usable old items inside campus. DTIL project, Team G13.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -16,27 +16,30 @@
       <a class="brand" href="#browse" aria-label="PassOn home">
         <span class="brand-mark" aria-hidden="true"></span>PassOn
       </a>
-      <label class="zone">
-        <span class="sr">Campus zone</span>
-        <select id="zoneSelect"></select>
-      </label>
+      <div class="top-r">
+        <label class="zone">
+          <span class="sr">Campus zone</span>
+          <select id="zoneSelect"></select>
+        </label>
+        <div id="authArea"></div>
+      </div>
     </div>
     <nav class="tabs wrap" aria-label="Main">
       <a href="#browse" data-tab="browse">Browse</a>
-      <a href="#add" data-tab="add">Give an item</a>
+      <a href="#add" data-tab="add">Post an item</a>
       <a href="#ngo" data-tab="ngo">NGO connect</a>
       <a href="#me" data-tab="me">My activity</a>
     </nav>
   </header>
 
   <main class="wrap">
-    <p class="demo-note">Prototype with sample data. Items, people and NGOs below are made up for the DTIL demo.</p>
+    <p id="setupBanner" class="banner" hidden>Firebase is not connected yet. Open <code>firebase-config.js</code> and paste your project settings (steps are in SETUP.md).</p>
 
     <!-- Browse -->
     <section id="view-browse" class="view" hidden>
       <div class="hero">
         <h1>Old things, new hands, same campus.</h1>
-        <p>Give away or swap books, clothes, furniture and electronics with people in your hostel and department. No selling, no money.</p>
+        <p>Give away, swap or sell books, clothes, furniture and electronics with people in your hostel and department. Free and swap come first, selling is there for items worth a small price.</p>
       </div>
       <div class="filters">
         <input id="q" type="search" placeholder="Search items, e.g. mattress, notes, kettle" aria-label="Search items">
@@ -49,8 +52,12 @@
 
     <!-- Add -->
     <section id="view-add" class="view" hidden>
-      <h2>Give an item</h2>
+      <h2>Post an item</h2>
       <p class="lead">Takes under a minute. Add a photo, pick a mode, choose where it can be picked up.</p>
+      <div id="addGate" class="gate" hidden>
+        <p>Log in to post an item.</p>
+        <button class="btn primary" type="button" data-auth="login">Log in or sign up</button>
+      </div>
       <form id="addForm" class="form" novalidate>
         <div class="field">
           <label for="fPhoto">Photo</label>
@@ -80,7 +87,10 @@
           <legend>Mode</legend>
           <label class="radio"><input type="radio" name="mode" value="free" checked> Give for free</label>
           <label class="radio"><input type="radio" name="mode" value="exchange"> Exchange for something</label>
+          <label class="radio"><input type="radio" name="mode" value="sell"> Sell for a price</label>
           <input id="fWant" type="text" maxlength="60" placeholder="What would you like in return?" hidden aria-label="Item wanted in return">
+          <input id="fPrice" type="number" min="1" max="100000" inputmode="numeric" placeholder="Price in rupees" hidden aria-label="Price in rupees">
+          <small class="err" id="ePrice" hidden>Enter a price of at least 1 rupee.</small>
         </fieldset>
         <div class="row2">
           <div class="field">
@@ -94,7 +104,7 @@
         </div>
         <label class="check"><input id="fClean" type="checkbox"> I have cleaned or sanitised this item</label>
         <p class="hint">Buyers worry most about hygiene on used items like bedding and clothes. Tick this only if it is true.</p>
-        <button class="btn primary" type="submit">Post item</button>
+        <button class="btn primary" id="addBtn" type="submit">Post item</button>
       </form>
     </section>
 
@@ -110,19 +120,29 @@
     <!-- Me -->
     <section id="view-me" class="view" hidden>
       <h2>My activity</h2>
-      <div class="stats" id="stats"></div>
-      <h3>My listings</h3>
-      <div id="myItems" class="stack"></div>
-      <h3>My requests</h3>
-      <div id="myReqs" class="stack"></div>
+      <div id="meGate" class="gate" hidden>
+        <p>Log in to see your listings, requests and messages.</p>
+        <button class="btn primary" type="button" data-auth="login">Log in or sign up</button>
+      </div>
+      <div id="meBody">
+        <div class="stats" id="stats"></div>
+        <h3>My listings</h3>
+        <div id="myItems" class="stack"></div>
+        <h3>Requests on my items</h3>
+        <div id="incoming" class="stack"></div>
+        <h3>My requests</h3>
+        <div id="myReqs" class="stack"></div>
+        <h3>Messages</h3>
+        <div id="threads" class="stack"></div>
+      </div>
     </section>
   </main>
 
   <footer class="wrap foot">
-    <p>DTIL · Team G13 · SDG 12 Responsible Consumption and Production · Frontend prototype</p>
+    <p>DTIL · Team G13 · SDG 12 Responsible Consumption and Production · Prototype</p>
   </footer>
 
-  <!-- Item detail -->
+  <!-- Item detail and chat -->
   <dialog id="detail" aria-labelledby="dTitle">
     <div class="dlg">
       <button class="close" id="dClose" aria-label="Close">×</button>
@@ -130,7 +150,40 @@
     </div>
   </dialog>
 
+  <!-- Login and sign up -->
+  <dialog id="authDlg" aria-labelledby="aTitle">
+    <div class="dlg">
+      <button class="close" id="aClose" aria-label="Close">×</button>
+      <h2 id="aTitle">Log in</h2>
+      <div class="chips seg" role="group" aria-label="Account action">
+        <button type="button" class="chip" id="segLogin" aria-pressed="true">Log in</button>
+        <button type="button" class="chip" id="segSignup" aria-pressed="false">Sign up</button>
+      </div>
+      <form id="authForm" class="form" novalidate>
+        <div class="field" id="nameField" hidden>
+          <label for="aName">Your name</label>
+          <input id="aName" type="text" maxlength="40" autocomplete="name" placeholder="e.g. Swaraj H.">
+        </div>
+        <div class="field">
+          <label for="aEmail">Email</label>
+          <input id="aEmail" type="text" inputmode="email" autocomplete="email" placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label for="aPass">Password</label>
+          <input id="aPass" type="password" autocomplete="current-password" placeholder="At least 6 characters">
+        </div>
+        <small class="err" id="aErr" hidden></small>
+        <button class="btn primary" id="aSubmit" type="submit">Log in</button>
+      </form>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

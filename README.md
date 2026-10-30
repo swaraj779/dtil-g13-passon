@@ -1,22 +1,22 @@
 # PassOn
 
-Campus donate and exchange app. Frontend prototype for DTIL, Team G13 (SDG 12).
+Campus give, swap and sell app for DTIL, Team G13 (SDG 12). Login and shared data run on Firebase.
 
 Students and hostel residents can give away or swap usable old items (books, clothes, furniture, electronics, utensils) inside campus.
 
 ## What the prototype shows
 
-- Browse and search items by category, mode (free or exchange) and campus pickup point
-- Give an item with photo, condition, mode and a "cleaned" tick for hygiene
-- Item details with a simulated chat and a request button
+- Sign up and log in with email and password
+- Browse and search items by category, mode (free, exchange or for sale) and campus pickup point
+- Post an item with photo, condition, mode and a "cleaned" tick for hygiene
+- Item details, real chat between owner and requester, and a request button
+- Owners accept or decline requests and mark items as given
 - NGO connect for items nobody claims within 7 days
 - My activity with listings, requests, pickup confirmation and owner rating
 
-All data is sample data. Nothing is sent to a server. Items you add are kept in your own browser.
+## Setup
 
-## Run it
-
-Open `index.html` in a browser. No install or build step.
+Follow `SETUP.md` to create the Firebase project and fill in `firebase-config.js`. Until that is done the site opens but shows a setup banner.
 
 ## Put it online with GitHub Pages
 
@@ -29,4 +29,6 @@ Open `index.html` in a browser. No install or build step.
 
 - `index.html` page structure
 - `styles.css` look and layout, light and dark themes
-- `app.js` sample data and all behaviour
+- `app.js` all behaviour
+- `firebase-config.js` your Firebase project settings
+- `SETUP.md` Firebase setup steps and security rules

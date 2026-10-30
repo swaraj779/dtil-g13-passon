@@ -62,7 +62,7 @@ main { padding-block: 20px 40px; }
 .hero p, .lead { color: var(--muted); max-width: 60ch; margin: 10px 0 0; }
 
 input, select, button, textarea { font: inherit; color: inherit; }
-input[type="text"], input[type="search"], select, input[type="file"] {
+input[type="text"], input[type="search"], input[type="password"], input[type="number"], select, input[type="file"] {
   width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
 }
 .filters { display: grid; gap: 10px; }
@@ -129,3 +129,19 @@ dialog::backdrop { background: rgba(5, 15, 20, .55); }
 
 @media (max-width: 520px) { .row2 { grid-template-columns: 1fr; } h2 { font-size: 1.5rem; } }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+
+[hidden] { display: none !important; }
+.top-r { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#authArea { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.who { font-weight: 700; max-width: 22vw; overflow: hidden; text-overflow: ellipsis; }
+.banner { margin: 0 0 18px; padding: 10px 14px; background: var(--free); color: var(--free-ink); border-radius: 8px; font-size: .92rem; }
+code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; }
+.gate { margin-top: 16px; padding: 20px; border: 1px dashed var(--line); border-radius: 12px; display: grid; gap: 12px; justify-items: start; max-width: 560px; }
+.gate p { margin: 0; color: var(--muted); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag.sell { background: var(--ink); color: var(--bg); }
+.tag.reserved { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.tag.you { background: var(--swap); color: var(--swap-ink); }
+.seg { margin: 14px 0 4px; }
+#authDlg .form { margin-top: 12px; }
+@media (max-width: 520px) { .who { display: none; } .zone select { max-width: 40vw; } }
