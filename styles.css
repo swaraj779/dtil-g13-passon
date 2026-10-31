@@ -145,3 +145,18 @@ code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .92em; 
 .seg { margin: 14px 0 4px; }
 #authDlg .form { margin-top: 12px; }
 @media (max-width: 520px) { .who { display: none; } .zone select { max-width: 40vw; } }
+
+.icon-btn { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.icon-btn svg { width: 18px; height: 18px; }
+
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-grid; place-items: center; padding: 0; flex: none; }
+.icon-btn svg { width: 18px; height: 18px; }
+.foot p { margin: 0 0 6px; }
+
+.top-in { flex-wrap: wrap; }
+.zone select { max-width: none; }
+.banner p { margin: 0 0 8px; }
+.banner + .banner { margin-top: -6px; }
+.banner.install { background: var(--swap); color: var(--swap-ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.admin-row { margin-top: 12px; }

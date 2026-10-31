@@ -33,7 +33,7 @@ const state = {
   user: null,
   items: [], myReqs: [], incoming: [], threads: [], offers: [],
   f: { q: "", cat: "All", mode: "all", zone: "All campus" },
-  unsubUser: [], chatUnsub: null, userCache: {}, authMode: "login", loaded: false
+  unsubUser: [], chatUnsub: null, userCache: {}, authMode: "login", loaded: false, isAdmin: false
 };
 
 /* ---------- Helpers ---------- */
@@ -57,10 +57,9 @@ function needFirebase() {
 }
 function needLogin() {
   if (needFirebase()) return true;
-  if (state.user) return false;
-  openAuth("login");
-  toast("Log in first.");
-  return true;
+  if (!state.user) { openAuth("login"); toast("Log in first."); return true; }
+  if (!state.user.verified) { toast("Verify your email first. Check your inbox."); window.scrollTo(0, 0); return true; }
+  return false;
 }
 function dbError(e) {
   console.error(e);
@@ -133,6 +132,7 @@ function openDetail(id) {
   const i = itemById(id); if (!i) return;
   stopChat();
   const mine = i.ownerId === me();
+  const canRemove = mine || state.isAdmin;
   const req = state.myReqs.find((r) => r.itemId === id);
   const reserved = i.status === "reserved";
   const label = i.mode === "sell" ? "Ask to buy for " + rupees(i.price) : i.mode === "free" ? "Request this item" : "Offer an exchange";
@@ -149,11 +149,12 @@ function openDetail(id) {
       <dt>Listed by</dt><dd>${esc(i.ownerName)} <span id="ownerRate" class="meta"></span></dd>
       ${i.note ? `<dt>Note</dt><dd>${esc(i.note)}</dd>` : ""}
     </dl>
-    ${mine ? `<p class="meta">This is your listing.</p><button class="btn small" id="delBtn" type="button">Remove listing</button>` : `
+    ${mine ? `<p class="meta">This is your listing.</p>` : `
     <div class="btn-row">
       <button class="btn primary" id="reqBtn" type="button" ${req || reserved ? "disabled" : ""}>${req ? "Requested" : reserved ? "Reserved" : esc(label)}</button>
       <button class="btn" id="msgBtn" type="button">Message ${esc(i.ownerName)}</button>
-    </div>`}`;
+    </div>`}
+    ${canRemove ? `<div class="btn-row admin-row"><button class="btn small danger" id="delBtn" type="button">${mine ? "Remove listing" : "Remove listing (admin)"}</button></div>` : ""}`;
   openDialog();
   ownerRating(i.ownerId).then((r) => { const el = $("#ownerRate"); if (el && r) el.textContent = r.count ? "· rated " + r.avg.toFixed(1) + " of 5 (" + r.count + ")" : "· no ratings yet"; });
 
@@ -333,10 +334,14 @@ function renderMe() {
 /* ---------- Auth ---------- */
 function renderAuth() {
   $("#authArea").innerHTML = state.user
-    ? `<span class="who">${esc(state.user.name)}</span> <button class="btn small" type="button" data-act="logout">Log out</button>`
+    ? `<span class="who">${esc(state.user.name)}</span>${state.isAdmin ? ' <span class="tag you">Admin</span>' : ""} <button class="btn small" type="button" data-act="logout">Log out</button>`
     : `<button class="btn small primary" type="button" data-auth="login">Log in</button>`;
-  $("#addGate").hidden = !!state.user;
-  $("#addForm").hidden = !state.user;
+  const ok = !!state.user && state.user.verified;
+  $("#addGate").hidden = ok;
+  $("#addForm").hidden = !ok;
+  $("#addGateMsg").textContent = state.user ? "Verify your email to post an item. Open the link we sent you, then tap I have verified at the top." : "Log in to post an item.";
+  $("#addGateBtn").hidden = !!state.user;
+  renderVerify();
 }
 function openAuth(mode) {
   if (needFirebase()) return;
@@ -381,15 +386,15 @@ function setupAuth() {
       if (state.authMode === "signup") {
         const cred = await auth.createUserWithEmailAndPassword(email, pass);
         await cred.user.updateProfile({ displayName: name });
-        await db.collection("users").doc(cred.user.uid).set({ name, email, ratingSum: 0, ratingCount: 0, createdAt: Date.now() });
-        state.user = { uid: cred.user.uid, name, email };
+        try { await cred.user.sendEmailVerification(); } catch (e3) { console.error(e3); }
+        state.user = { uid: cred.user.uid, name, email, verified: false };
         renderAuth(); renderMe();
       } else {
         await auth.signInWithEmailAndPassword(email, pass);
       }
       $("#authForm").reset();
       $("#authDlg").close();
-      toast(state.authMode === "signup" ? "Account created." : "Logged in.");
+      toast(state.authMode === "signup" ? "Account created. Open the verification link we emailed you." : "Logged in.");
     } catch (e2) { fail(AUTH_ERR[e2.code] || "Could not continue. Try again."); }
     btn.disabled = false;
   };
@@ -486,18 +491,111 @@ function route() {
 }
 window.addEventListener("hashchange", route);
 
+/* ---------- Email verification and admin ---------- */
+function renderVerify() {
+  const show = !!state.user && !state.user.verified;
+  $("#verifyBar").hidden = !show;
+  if (show) $("#verifyEmail").textContent = state.user.email || "";
+}
+async function ensureProfile(u) {
+  try {
+    const ref = db.collection("users").doc(u.uid);
+    const s = await ref.get();
+    if (!s.exists) await ref.set({ name: state.user ? state.user.name : (u.displayName || "Student"), email: u.email || "", ratingSum: 0, ratingCount: 0, createdAt: Date.now() });
+  } catch (e) { console.error(e); }
+}
+async function checkAdmin(uid) {
+  let ok = false;
+  try { ok = (await db.collection("admins").doc(uid).get()).exists; } catch (e) { ok = false; }
+  if (state.user && state.user.uid === uid && state.isAdmin !== ok) { state.isAdmin = ok; renderAuth(); refresh(); }
+}
+function afterVerified(u) { ensureProfile(u); checkAdmin(u.uid); }
+async function checkVerified(manual) {
+  const u = auth && auth.currentUser;
+  if (!u || !state.user || state.user.verified) return;
+  try {
+    await u.reload();
+    if (u.emailVerified) {
+      await u.getIdToken(true);
+      state.user.verified = true;
+      renderAuth(); refresh();
+      afterVerified(u);
+      toast("Email verified. You can post and chat now.");
+    } else if (manual) toast("Not verified yet. Open the link in your email first, then tap again.");
+  } catch (e) { console.error(e); if (manual) toast("Could not check. Try again."); }
+}
+async function resendVerify() {
+  const u = auth && auth.currentUser; if (!u) return;
+  try { await u.sendEmailVerification(); toast("Link sent to " + u.email + ". Check spam too."); }
+  catch (e) { toast(e.code === "auth/too-many-requests" ? "Wait a minute before asking again." : "Could not send the link."); }
+}
+
+/* ---------- Dark mode ---------- */
+const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const mq = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
+function effectiveTheme() {
+  const t = document.documentElement.getAttribute("data-theme");
+  return t === "dark" || t === "light" ? t : (mq("(prefers-color-scheme: dark)") ? "dark" : "light");
+}
+function paintTheme() {
+  const dark = effectiveTheme() === "dark", b = $("#themeBtn");
+  b.innerHTML = dark ? SUN : MOON;
+  b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
+  b.title = dark ? "Light mode" : "Dark mode";
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", dark ? "#0e1a20" : "#f3f6f5");
+}
+function setTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("passon.theme", t); } catch (e) { /* storage blocked */ }
+  paintTheme();
+}
+
+/* ---------- Install as an app ---------- */
+let installEvt = null;
+const isStandalone = () => mq("(display-mode: standalone)") || window.navigator.standalone === true;
+const installDismissed = () => { try { return localStorage.getItem("passon.noInstall") === "1"; } catch (e) { return false; } };
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); installEvt = e;
+  if (!isStandalone() && !installDismissed()) $("#installBar").hidden = false;
+});
+window.addEventListener("appinstalled", () => { $("#installBar").hidden = true; installEvt = null; toast("PassOn installed."); });
+
 /* ---------- Start ---------- */
-renderFilters(); renderGrid(); setupAdd(); setupAuth(); renderAuth(); route();
+renderFilters(); renderGrid(); setupAdd(); setupAuth(); renderAuth(); paintTheme(); route();
+$("#themeBtn").onclick = () => setTheme(effectiveTheme() === "dark" ? "light" : "dark");
+if (window.matchMedia) {
+  const dm = window.matchMedia("(prefers-color-scheme: dark)");
+  if (dm.addEventListener) dm.addEventListener("change", paintTheme);
+}
+$("#installBtn").onclick = async () => {
+  if (!installEvt) return;
+  installEvt.prompt();
+  try { await installEvt.userChoice; } catch (e) { /* dismissed */ }
+  installEvt = null; $("#installBar").hidden = true;
+};
+$("#installDismiss").onclick = () => {
+  $("#installBar").hidden = true;
+  try { localStorage.setItem("passon.noInstall", "1"); } catch (e) { /* storage blocked */ }
+};
+$("#verifyDone").onclick = () => checkVerified(true);
+$("#verifyResend").onclick = resendVerify;
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVerified(false); });
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => { /* app still works without it */ }); });
+}
 if (!configured) {
   $("#setupBanner").hidden = false;
 } else {
   listenItems();
   auth.onAuthStateChanged((u) => {
     if (u) {
-      state.user = { uid: u.uid, name: u.displayName || (u.email || "").split("@")[0], email: u.email };
+      state.user = { uid: u.uid, name: u.displayName || (u.email || "").split("@")[0], email: u.email, verified: u.emailVerified };
       listenUser(u.uid);
+      if (u.emailVerified) afterVerified(u);
     } else {
-      state.user = null; stopUser();
+      state.user = null; state.isAdmin = false; stopUser();
       state.myReqs = []; state.incoming = []; state.threads = []; state.offers = [];
     }
     renderAuth(); refresh();

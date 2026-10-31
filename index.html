@@ -8,7 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#f3f6f5">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="PassOn">
+  <script>try{var t=localStorage.getItem("passon.theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,10 +25,7 @@
         <img class="brand-mark" src="logo-mark.png" alt="" width="40" height="28">PassOn
       </a>
       <div class="top-r">
-        <label class="zone">
-          <span class="sr">Campus zone</span>
-          <select id="zoneSelect"></select>
-        </label>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode"></button>
         <div id="authArea"></div>
       </div>
     </div>
@@ -35,6 +39,14 @@
 
   <main class="wrap">
     <p id="setupBanner" class="banner" hidden>Firebase is not connected yet. Open <code>firebase-config.js</code> and paste your project settings (steps are in SETUP.md).</p>
+    <div id="verifyBar" class="banner verify" hidden>
+      <p>Verify your email to post items, send requests and chat. We sent a link to <b id="verifyEmail"></b>. Check the spam folder too.</p>
+      <div class="btn-row"><button class="btn small primary" id="verifyDone" type="button">I have verified</button><button class="btn small" id="verifyResend" type="button">Resend link</button></div>
+    </div>
+    <div id="installBar" class="banner install" hidden>
+      <p>Install PassOn on your phone for one-tap access, like a normal app.</p>
+      <div class="btn-row"><button class="btn small primary" id="installBtn" type="button">Install app</button><button class="btn small" id="installDismiss" type="button">Not now</button></div>
+    </div>
 
     <!-- Browse -->
     <section id="view-browse" class="view" hidden>
@@ -44,6 +56,10 @@
       </div>
       <div class="filters">
         <input id="q" type="search" placeholder="Search items, e.g. mattress, notes, kettle" aria-label="Search items">
+        <label class="zone">
+          <span class="sr">Campus zone</span>
+          <select id="zoneSelect"></select>
+        </label>
         <div class="chips" id="catChips" role="group" aria-label="Category"></div>
         <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
       </div>
@@ -56,8 +72,8 @@
       <h2>Post an item</h2>
       <p class="lead">Takes under a minute. Add a photo, pick a mode, choose where it can be picked up.</p>
       <div id="addGate" class="gate" hidden>
-        <p>Log in to post an item.</p>
-        <button class="btn primary" type="button" data-auth="login">Log in or sign up</button>
+        <p id="addGateMsg">Log in to post an item.</p>
+        <button class="btn primary" id="addGateBtn" type="button" data-auth="login">Log in or sign up</button>
       </div>
       <form id="addForm" class="form" novalidate>
         <div class="field">
@@ -141,6 +157,7 @@
 
   <footer class="wrap foot">
     <p>DTIL · Team G13 · SDG 12 Responsible Consumption and Production · Prototype</p>
+    <p>Install on your phone: in Chrome open the menu and tap Install app or Add to Home screen. On iPhone use Share, then Add to Home Screen.</p>
   </footer>
 
   <!-- Item detail and chat -->

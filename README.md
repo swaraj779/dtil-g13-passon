@@ -6,13 +6,16 @@ Students and hostel residents can give away or swap usable old items (books, clo
 
 ## What the prototype shows
 
-- Sign up and log in with email and password
+- Sign up and log in with email and password, with a verification link so fake emails cannot post
 - Browse and search items by category, mode (free, exchange or for sale) and campus pickup point
 - Post an item with photo, condition, mode and a "cleaned" tick for hygiene
 - Item details, real chat between owner and requester, and a request button
 - Owners accept or decline requests and mark items as given
 - NGO connect for items nobody claims within 7 days
 - My activity with listings, requests, pickup confirmation and owner rating
+- Admin role that can remove any listing
+- Dark and light mode switch
+- Installable on a phone from the browser (works like an app)
 
 ## Setup
 
@@ -30,5 +33,6 @@ Follow `SETUP.md` to create the Firebase project and fill in `firebase-config.js
 - `index.html` page structure
 - `styles.css` look and layout, light and dark themes
 - `app.js` all behaviour
+- `manifest.webmanifest`, `sw.js` and the icon files make the site installable
 - `firebase-config.js` your Firebase project settings
 - `SETUP.md` Firebase setup steps and security rules
