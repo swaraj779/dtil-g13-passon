@@ -11,11 +11,7 @@ const CAT_COLORS = {
   Other: "linear-gradient(135deg,#7a7f8c,#42464f)"
 };
 const ZONES = ["All campus", "Hostel A common room", "Hostel B common room", "Girls hostel lobby", "Library entrance", "Main block gate", "Canteen"];
-const NGOS = [
-  { name: "Seva Sangh (sample)", takes: ["Clothes", "Furniture", "Utensils"], note: "Pickup within 2 days" },
-  { name: "Pustak Mitra (sample)", takes: ["Books"], note: "Collects every Saturday" },
-  { name: "Digital Daan Group (sample)", takes: ["Electronics"], note: "Refurbishes working devices" }
-];
+const NGO_ID_TYPES = ["NGO registration certificate", "Darpan (NITI Aayog) ID", "12A or 80G certificate", "Society or trust registration", "Other official document"];
 const MODE_LABEL = { all: "All modes", free: "Free", exchange: "Exchange", sell: "For sale" };
 
 /* ---------- Firebase ---------- */
@@ -32,8 +28,9 @@ if (configured) {
 const state = {
   user: null,
   items: [], myReqs: [], incoming: [], threads: [], offers: [],
-  f: { q: "", cat: "All", mode: "all", zone: "All campus" },
-  unsubUser: [], chatUnsub: null, userCache: {}, authMode: "login", loaded: false, isAdmin: false
+  f: { q: "", cat: "All", mode: "all", zone: "All campus", sort: "rating" },
+  profiles: {}, ngos: [], myNgo: null, allNgos: [], ngoInbox: [],
+  unsubUser: [], chatUnsub: null, authMode: "login", loaded: false, isAdmin: false
 };
 
 /* ---------- Helpers ---------- */
@@ -88,40 +85,54 @@ function renderFilters() {
   $("#catChips").innerHTML = ["All"].concat(CATS).map((c) => chip(c, state.f.cat === c, `data-cat="${esc(c)}"`)).join("");
   $("#modeChips").innerHTML = Object.keys(MODE_LABEL).map((v) => chip(MODE_LABEL[v], state.f.mode === v, `data-mode="${v}"`)).join("");
 }
+/* ---------- Seller rating ---------- */
+/* Ranking uses a smoothed score so one lucky 5 star does not beat a seller with many good ratings.
+   Sellers with at least 2 ratings and an average below LOW_AVG go to the bottom with a warning. */
+const PRIOR = 3.5, PRIOR_W = 3, LOW_AVG = 3;
+function ratingOf(uid) {
+  const p = state.profiles[uid] || {};
+  const count = p.ratingCount || 0, sum = p.ratingSum || 0;
+  const avg = count ? sum / count : 0;
+  return { count, avg, score: (sum + PRIOR * PRIOR_W) / (count + PRIOR_W), low: count >= 2 && avg < LOW_AVG, veryLow: count >= 2 && avg < 2 };
+}
+function ratingChip(r) {
+  if (!r.count) return '<span class="rate new">New seller</span>';
+  return `<span class="rate ${r.low ? "low" : r.avg >= 4 ? "high" : ""}">★ ${r.avg.toFixed(1)} <small>(${r.count})</small></span>`;
+}
+function warnText(r) {
+  return `Low seller rating: ${r.avg.toFixed(1)} of 5 from ${r.count} people. Meet in a public place such as the library entrance and check the item before you pay or hand anything over.`;
+}
+
 function renderGrid() {
-  const { q, cat, mode, zone } = state.f;
+  const { q, cat, mode, zone, sort } = state.f;
   const list = state.items.filter((i) =>
     i.status !== "given" &&
     (cat === "All" || i.cat === cat) &&
     (mode === "all" || i.mode === mode) &&
     (zone === "All campus" || i.zone === zone) &&
-    (!q || ((i.title || "") + " " + (i.cat || "")).toLowerCase().includes(q.toLowerCase())));
+    (!q || ((i.title || "") + " " + (i.cat || "")).toLowerCase().includes(q.toLowerCase()))
+  ).map((i) => ({ i, r: ratingOf(i.ownerId) }));
+  if (sort === "rating") list.sort((x, y) => (x.r.low - y.r.low) || (y.r.score - x.r.score) || ((y.i.createdAt || 0) - (x.i.createdAt || 0)));
   $("#count").textContent = list.length + (list.length === 1 ? " item" : " items") + (zone === "All campus" ? " across campus" : " near " + zone);
   let empty = "Nothing matches yet. Try another category, or clear the search.";
   if (!configured) empty = "Connect Firebase to load items. See SETUP.md.";
   else if (state.loaded && !state.items.length) empty = "No items yet. Be the first to post one.";
-  $("#grid").innerHTML = list.length ? list.map((i) => `
-    <button class="card" data-open="${esc(i.id)}" type="button">
+  let divided = false;
+  $("#grid").innerHTML = list.length ? list.map(({ i, r }) => {
+    let div = "";
+    if (sort === "rating" && r.low && !divided) { divided = true; div = `<div class="divider">Lower-rated sellers. Be careful with these.</div>`; }
+    return div + `
+    <button class="card${r.low ? " warn-card" : ""}" data-open="${esc(i.id)}" type="button">
       ${thumb(i)}
       <div class="card-b">
         ${tagsFor(i)}
         <h3>${esc(i.title)}</h3>
         <span class="meta">${esc(i.zone)} · ${ago(i.createdAt)}</span>
+        <span class="meta seller">${esc(i.ownerName)} ${ratingChip(r)}</span>
+        ${r.low ? '<span class="warn-line">Low seller rating</span>' : ""}
       </div>
-    </button>`).join("") : `<div class="empty">${esc(empty)}</div>`;
-}
-
-/* ---------- Owner rating ---------- */
-async function ownerRating(uid) {
-  if (!configured) return null;
-  if (state.userCache[uid]) return state.userCache[uid];
-  try {
-    const s = await db.collection("users").doc(uid).get();
-    const d = s.exists ? s.data() : {};
-    const out = { count: d.ratingCount || 0, avg: d.ratingCount ? d.ratingSum / d.ratingCount : 0 };
-    state.userCache[uid] = out;
-    return out;
-  } catch (e) { return null; }
+    </button>`;
+  }).join("") : `<div class="empty">${esc(empty)}</div>`;
 }
 
 /* ---------- Detail dialog ---------- */
@@ -133,6 +144,7 @@ function openDetail(id) {
   stopChat();
   const mine = i.ownerId === me();
   const canRemove = mine || state.isAdmin;
+  const rt = ratingOf(i.ownerId);
   const req = state.myReqs.find((r) => r.itemId === id);
   const reserved = i.status === "reserved";
   const label = i.mode === "sell" ? "Ask to buy for " + rupees(i.price) : i.mode === "free" ? "Request this item" : "Offer an exchange";
@@ -146,9 +158,10 @@ function openDetail(id) {
       ${i.mode === "exchange" ? `<dt>Wants</dt><dd>${esc(i.want || "Open to offers")}</dd>` : ""}
       ${i.mode === "sell" ? `<dt>Price</dt><dd>${rupees(i.price)}, pay at pickup</dd>` : ""}
       <dt>Pickup</dt><dd>${esc(i.zone)}</dd>
-      <dt>Listed by</dt><dd>${esc(i.ownerName)} <span id="ownerRate" class="meta"></span></dd>
+      <dt>Listed by</dt><dd>${esc(i.ownerName)} ${ratingChip(rt)}</dd>
       ${i.note ? `<dt>Note</dt><dd>${esc(i.note)}</dd>` : ""}
     </dl>
+    ${!mine && rt.low ? `<p class="warn" role="alert">${esc(warnText(rt))}</p>` : ""}
     ${mine ? `<p class="meta">This is your listing.</p>` : `
     <div class="btn-row">
       <button class="btn primary" id="reqBtn" type="button" ${req || reserved ? "disabled" : ""}>${req ? "Requested" : reserved ? "Reserved" : esc(label)}</button>
@@ -156,7 +169,6 @@ function openDetail(id) {
     </div>`}
     ${canRemove ? `<div class="btn-row admin-row"><button class="btn small danger" id="delBtn" type="button">${mine ? "Remove listing" : "Remove listing (admin)"}</button></div>` : ""}`;
   openDialog();
-  ownerRating(i.ownerId).then((r) => { const el = $("#ownerRate"); if (el && r) el.textContent = r.count ? "· rated " + r.avg.toFixed(1) + " of 5 (" + r.count + ")" : "· no ratings yet"; });
 
   const rb = $("#reqBtn");
   if (rb) rb.onclick = async () => {
@@ -223,16 +235,16 @@ function openThread(t) {
 }
 
 /* ---------- Post an item ---------- */
-function compress(file) {
+function compress(file, max = 640, q = 0.6) {
   return new Promise((resolve) => {
     const img = new Image(); const url = URL.createObjectURL(file);
     img.onload = () => {
-      const k = Math.min(1, 640 / Math.max(img.width, img.height));
+      const k = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      resolve(c.toDataURL("image/jpeg", 0.6));
+      resolve(c.toDataURL("image/jpeg", q));
     };
     img.onerror = () => { URL.revokeObjectURL(url); resolve(""); };
     img.src = url;
@@ -280,19 +292,119 @@ function setupAdd() {
   };
 }
 
-/* ---------- NGO ---------- */
+/* ---------- NGO list ---------- */
+const NGO_STATUS = {
+  pending: "Waiting for the admin to check your proof.",
+  approved: "Approved. You are listed for students.",
+  rejected: "Rejected. Delete this and apply again with a clearer proof."
+};
+function ngoCard(n, admin) {
+  return `<div class="row-card"><div>
+    <strong>${esc(n.name)}</strong> <span class="tag clean">Checked by admin</span>
+    <div class="meta">${esc(n.area)} · Takes: ${esc((n.takes || []).join(", "))}</div>
+    <div class="meta">Contact: ${esc(n.contact)}${n.note ? " · " + esc(n.note) : ""}</div>
+  </div>${admin ? `<button class="btn small danger" data-ngodel="${esc(n.id)}" type="button">Remove</button>` : ""}</div>`;
+}
+function renderNgos() {
+  const list = state.ngos.slice().sort((x, y) => (x.name || "").localeCompare(y.name || ""));
+  $("#ngoApproved").innerHTML = list.length ? list.map((n) => ngoCard(n, state.isAdmin)).join("")
+    : `<div class="empty">No verified NGO yet. An NGO appears here after the admin checks its proof.</div>`;
+  const ok = !!state.user && state.user.verified, mine = state.myNgo;
+  $("#ngoGate").hidden = ok;
+  $("#ngoForm").hidden = !ok || !!mine;
+  $("#ngoMine").hidden = !mine;
+  if (mine) $("#ngoMine").innerHTML = `<div class="row-card"><div><strong>${esc(mine.name)}</strong><div class="meta">${esc(NGO_STATUS[mine.status] || mine.status)}</div></div><button class="btn small" data-ngoreset="1" type="button">Delete and re-apply</button></div>`;
+  $("#ngoAdmin").hidden = !state.isAdmin;
+  if (state.isAdmin) {
+    const p = state.allNgos.filter((n) => n.status === "pending");
+    $("#ngoPending").innerHTML = p.length ? p.map((n) => `<div class="row-card"><div><strong>${esc(n.name)}</strong><div class="meta">${esc(n.area)} · ${esc(n.contact)} · ${ago(n.createdAt)}</div></div><button class="btn small primary" data-review="${esc(n.id)}" type="button">Review proof</button></div>`).join("")
+      : `<div class="empty">No pending NGO requests.</div>`;
+  }
+}
+function setupNgoForm() {
+  $("#nCats").innerHTML = CATS.map((c) => `<label class="check"><input type="checkbox" value="${esc(c)}"> ${esc(c)}</label>`).join("");
+  $("#nIdType").innerHTML = NGO_ID_TYPES.map((t) => `<option>${esc(t)}</option>`).join("");
+  let proof = "";
+  $("#nProof").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    proof = await compress(f, 1100, 0.7);
+    if (proof.length > 750000) proof = await compress(f, 800, 0.5);
+    const p = $("#nProofPrev"); if (proof) { p.src = proof; p.hidden = false; }
+  };
+  $("#ngoForm").onsubmit = async (e) => {
+    e.preventDefault();
+    if (needLogin()) return;
+    const err = $("#nErr"); err.hidden = true;
+    const fail = (m) => { err.textContent = m; err.hidden = false; };
+    const v = (id) => $(id).value.trim();
+    const takes = Array.from(document.querySelectorAll("#nCats input:checked")).map((x) => x.value);
+    if (!v("#nName") || !v("#nArea") || !v("#nContact")) return fail("Fill in the NGO name, area and contact.");
+    if (!takes.length) return fail("Select at least one kind of item you accept.");
+    if (!v("#nIdNo")) return fail("Enter the registration or ID number.");
+    if (!proof) return fail("Attach a clear photo of the certificate or ID.");
+    if (proof.length > 900000) return fail("That photo is too large. Try a smaller one.");
+    if (!$("#nConsent").checked) return fail("Tick the confirmation box.");
+    const btn = $("#nBtn"); btn.disabled = true;
+    try {
+      const uid = me(), now = Date.now(), b = db.batch();
+      b.set(db.collection("ngos").doc(uid), { ownerId: uid, name: v("#nName"), area: v("#nArea"), contact: v("#nContact"), note: v("#nNote"), takes, status: "pending", createdAt: now });
+      b.set(db.collection("ngoProofs").doc(uid), { ownerId: uid, idType: $("#nIdType").value, idNo: v("#nIdNo"), proof, createdAt: now });
+      await b.commit();
+      e.target.reset(); proof = ""; $("#nProofPrev").hidden = true;
+      toast("Submitted. The admin will check your proof.");
+    } catch (e2) { dbError(e2); }
+    btn.disabled = false;
+  };
+}
+async function openNgoReview(id) {
+  const n = state.allNgos.find((x) => x.id === id); if (!n) return;
+  stopChat();
+  $("#dBody").innerHTML = `<h2 id="dTitle">${esc(n.name)}</h2><p class="meta">Loading proof...</p>`;
+  openDialog();
+  let p = null;
+  try { const s = await db.collection("ngoProofs").doc(id).get(); p = s.exists ? s.data() : null; } catch (e) { dbError(e); }
+  const img = p && /^data:image\//.test(p.proof || "") ? `<img class="proof" src="${esc(p.proof)}" alt="Proof uploaded by the NGO">` : `<p class="meta">No proof image found.</p>`;
+  $("#dBody").innerHTML = `
+    <h2 id="dTitle">${esc(n.name)}</h2>
+    <dl class="kv">
+      <dt>Area</dt><dd>${esc(n.area)}</dd>
+      <dt>Contact</dt><dd>${esc(n.contact)}</dd>
+      <dt>Takes</dt><dd>${esc((n.takes || []).join(", "))}</dd>
+      <dt>Proof type</dt><dd>${esc(p ? p.idType : "-")}</dd>
+      <dt>ID number</dt><dd>${esc(p ? p.idNo : "-")}</dd>
+    </dl>
+    ${img}
+    <p class="hint">Check that the name on the document matches the NGO name and that the number looks valid (for example on the Darpan portal) before approving.</p>
+    <div class="btn-row"><button class="btn primary" id="ngoOk" type="button">Approve</button><button class="btn danger" id="ngoNo" type="button">Reject</button></div>`;
+  const set = async (status) => {
+    try { await db.collection("ngos").doc(id).update({ status, reviewedAt: Date.now() }); $("#detail").close(); toast(status === "approved" ? "NGO approved." : "NGO rejected."); } catch (e) { dbError(e); }
+  };
+  $("#ngoOk").onclick = () => set("approved");
+  $("#ngoNo").onclick = () => set("rejected");
+}
+async function deleteNgo(id) {
+  if (!window.confirm("Delete this NGO record and its proof?")) return;
+  try {
+    const b = db.batch();
+    b.delete(db.collection("ngos").doc(id));
+    b.delete(db.collection("ngoProofs").doc(id));
+    await b.commit();
+    toast("Deleted.");
+  } catch (e) { dbError(e); }
+}
+
+/* ---------- Donate ---------- */
 function renderNgo() {
-  $("#ngoList").innerHTML = NGOS.map((n) => `
-    <div class="row-card"><div><strong>${esc(n.name)}</strong><div class="meta">Takes: ${esc(n.takes.join(", "))} · ${esc(n.note)}</div></div></div>`).join("");
   if (!state.user) { $("#unclaimed").innerHTML = `<div class="empty">Log in to see your unclaimed items.</div>`; return; }
   const old = state.items.filter((i) => i.ownerId === me() && i.status === "available" && days(i.createdAt) >= 7);
   $("#unclaimed").innerHTML = (old.length ? old.map((i) => {
-    const ngo = NGOS.find((n) => n.takes.includes(i.cat));
+    const m = state.ngos.filter((n) => (n.takes || []).includes(i.cat) && n.ownerId !== me());
     const done = state.offers.includes(i.id);
-    return `<div class="row-card"><div><strong>${esc(i.title)}</strong><div class="meta">Listed ${ago(i.createdAt)}, no taker yet</div></div>
-      ${ngo ? `<button class="btn small primary" data-ngo="${esc(i.id)}" type="button" ${done ? "disabled" : ""}>${done ? "Offer saved" : "Offer to " + esc(ngo.name)}</button>` : `<span class="meta">No NGO takes this category yet</span>`}</div>`;
-  }).join("") : `<div class="empty">None right now. Items without a taker for 7 days will appear here.</div>`)
-    + `<p class="meta">Prototype note: this saves your offer. The sample NGOs are not contacted.</p>`;
+    const act = !m.length ? `<span class="meta">No verified NGO takes ${esc(i.cat)} yet</span>`
+      : `<div class="btn-row"><select data-ngosel="${esc(i.id)}" aria-label="Choose NGO" ${done ? "disabled" : ""}>${m.map((n) => `<option value="${esc(n.id)}">${esc(n.name)}</option>`).join("")}</select>
+         <button class="btn small primary" data-ngo="${esc(i.id)}" type="button" ${done ? "disabled" : ""}>${done ? "Offer sent" : "Offer"}</button></div>`;
+    return `<div class="row-card"><div><strong>${esc(i.title)}</strong><div class="meta">Listed ${ago(i.createdAt)}, no taker yet</div></div>${act}</div>`;
+  }).join("") : `<div class="empty">None right now. Items without a taker for 7 days will appear here.</div>`);
 }
 
 /* ---------- My activity ---------- */
@@ -303,10 +415,17 @@ function renderMe() {
   if (!state.user) return;
   const mine = state.items.filter((i) => i.ownerId === me());
   const passed = mine.filter((i) => i.status === "given").length + state.myReqs.filter((r) => r.status === "picked").length;
-  $("#stats").innerHTML = [[mine.length, "Items you posted"], [state.myReqs.length, "Requests you made"], [passed, "Items kept out of the bin"]]
+  const rt = ratingOf(me());
+  $("#stats").innerHTML = [[mine.length, "Items you posted"], [state.myReqs.length, "Requests you made"], [passed, "Items kept out of the bin"], [rt.count ? rt.avg.toFixed(1) + " ★" : "-", rt.count ? "Your seller rating (" + rt.count + ")" : "Your seller rating (none yet)"]]
     .map(([n, l]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join("");
-  $("#myItems").innerHTML = mine.length ? mine.map((i) => `<div class="row-card"><div><strong>${esc(i.title)}</strong><div class="meta">${i.mode === "sell" ? rupees(i.price) : i.mode === "free" ? "Free" : "Exchange"} · ${esc(i.zone)} · ${esc(i.status)} · ${ago(i.createdAt)}</div></div><button class="btn small" data-open="${esc(i.id)}" type="button">View</button></div>`).join("")
-    : `<div class="empty">You have not posted anything yet.</div>`;
+  const warn = rt.low ? `<p class="warn">${esc("Your rating is below " + LOW_AVG + ". Buyers see a warning on your listings and they show lower in Browse. Keep items as described and be on time at pickup to improve it.")}</p>` : "";
+  $("#myItems").innerHTML = warn + (mine.length ? mine.map((i) => `<div class="row-card"><div><strong>${esc(i.title)}</strong><div class="meta">${i.mode === "sell" ? rupees(i.price) : i.mode === "free" ? "Free" : "Exchange"} · ${esc(i.zone)} · ${esc(i.status)} · ${ago(i.createdAt)}</div></div><button class="btn small" data-open="${esc(i.id)}" type="button">View</button></div>`).join("")
+    : `<div class="empty">You have not posted anything yet.</div>`);
+
+  const ng = state.myNgo && state.myNgo.status === "approved";
+  $("#ngoInboxBox").hidden = !ng;
+  if (ng) $("#ngoInbox").innerHTML = state.ngoInbox.length ? state.ngoInbox.slice().sort((x, y) => y.createdAt - x.createdAt).map((o) => `<div class="row-card"><div><strong>${esc(o.itemTitle)}</strong> (${esc(o.itemCat || "")})<div class="meta">From ${esc(o.ownerName)} · pickup ${esc(o.zone || "")} · ${ago(o.createdAt)}</div></div><button class="btn small primary" data-msgdonor="${esc(o.id)}" type="button">Message donor</button></div>`).join("")
+    : `<div class="empty">No offers yet.</div>`;
 
   const inc = state.incoming.slice().sort((a, b) => b.createdAt - a.createdAt);
   $("#incoming").innerHTML = inc.length ? inc.map((r) => {
@@ -407,12 +526,23 @@ function refresh() {
   renderGrid();
   const tab = currentTab();
   if (tab === "ngo") renderNgo();
+  if (tab === "ngos") renderNgos();
   if (tab === "me") renderMe();
 }
 function listenItems() {
   db.collection("items").orderBy("createdAt", "desc").limit(200).onSnapshot((s) => {
     state.items = docs(s); state.loaded = true; refresh();
   }, (e) => { state.loaded = true; dbError(e); refresh(); });
+}
+function listenPublic() {
+  db.collection("profiles").limit(500).onSnapshot((s) => {
+    const m = {}; s.docs.forEach((d) => { m[d.id] = d.data(); });
+    state.profiles = m; refresh();
+  }, (e) => console.error(e));
+  db.collection("ngos").where("status", "==", "approved").onSnapshot((s) => { state.ngos = docs(s); refresh(); }, (e) => console.error(e));
+}
+function listenAdmin() {
+  state.unsubUser.push(db.collection("ngos").orderBy("createdAt", "desc").limit(100).onSnapshot((s) => { state.allNgos = docs(s); refresh(); }, (e) => console.error(e)));
 }
 function listenUser(uid) {
   stopUser();
@@ -421,6 +551,8 @@ function listenUser(uid) {
   on(db.collection("requests").where("ownerId", "==", uid), "incoming");
   on(db.collection("threads").where("participants", "array-contains", uid), "threads");
   on(db.collection("ngoOffers").where("ownerId", "==", uid), "offers", (s) => s.docs.map((d) => d.data().itemId));
+  on(db.collection("ngoOffers").where("ngoOwnerId", "==", uid), "ngoInbox");
+  state.unsubUser.push(db.collection("ngos").doc(uid).onSnapshot((s) => { state.myNgo = s.exists ? Object.assign({ id: s.id }, s.data()) : null; refresh(); }, (e) => console.error(e)));
 }
 
 /* ---------- Actions ---------- */
@@ -436,20 +568,27 @@ async function setRequest(reqId, status, itemStatus) {
 async function rate(reqId, n) {
   const r = state.myReqs.find((x) => x.id === reqId); if (!r || r.score) return;
   try {
-    const b = db.batch();
-    b.update(db.collection("requests").doc(reqId), { score: n });
-    b.update(db.collection("users").doc(r.ownerId), { ratingSum: FV.increment(n), ratingCount: FV.increment(1) });
-    await b.commit();
-    delete state.userCache[r.ownerId];
+    await db.runTransaction(async (tx) => {
+      const pref = db.collection("profiles").doc(r.ownerId);
+      const ps = await tx.get(pref);
+      if (!ps.exists) { const err = new Error("no profile"); err.code = "no-profile"; throw err; }
+      const p = ps.data();
+      tx.update(db.collection("requests").doc(reqId), { score: n });
+      tx.update(pref, { ratingSum: (p.ratingSum || 0) + n, ratingCount: (p.ratingCount || 0) + 1, lastReq: reqId });
+    });
     toast("Thanks for rating.");
-  } catch (e) { dbError(e); }
+  } catch (e) {
+    if (e && e.code === "no-profile") toast("This seller has not opened the updated app yet, so rating is not possible right now.");
+    else dbError(e);
+  }
 }
 async function offerNgo(itemId) {
   const i = itemById(itemId); if (!i) return;
-  const ngo = NGOS.find((n) => n.takes.includes(i.cat)); if (!ngo) return;
+  const sel = Array.from(document.querySelectorAll("select[data-ngosel]")).find((s) => s.dataset.ngosel === itemId);
+  const n = sel && state.ngos.find((x) => x.id === sel.value); if (!n) return;
   try {
-    await db.collection("ngoOffers").add({ itemId, itemTitle: i.title, ngo: ngo.name, ownerId: me(), createdAt: Date.now() });
-    toast("Offer saved.");
+    await db.collection("ngoOffers").doc(itemId + "_" + n.id).set({ itemId, itemTitle: i.title, itemCat: i.cat, zone: i.zone, ngoOwnerId: n.ownerId, ngoName: n.name, ownerId: me(), ownerName: state.user.name, createdAt: Date.now() });
+    toast("Offer sent to " + n.name + ".");
   } catch (e) { dbError(e); }
 }
 
@@ -466,6 +605,10 @@ document.addEventListener("click", (e) => {
   else if (d.given) setRequest(d.given, "picked", "given");
   else if (d.rate) { const [id, n] = d.rate.split(":"); rate(id, Number(n)); }
   else if (d.ngo) offerNgo(d.ngo);
+  else if (d.review) openNgoReview(d.review);
+  else if (d.ngodel) deleteNgo(d.ngodel);
+  else if (d.ngoreset) deleteNgo(me());
+  else if (d.msgdonor) { const o = state.ngoInbox.find((x) => x.id === d.msgdonor); if (o && state.myNgo) openThread({ id: "ngo_" + o.id, itemId: o.itemId, itemTitle: o.itemTitle, ownerId: o.ownerId, ownerName: o.ownerName, requesterId: me(), requesterName: state.myNgo.name }); }
   else if (d.thread) { const th = state.threads.find((x) => x.id === d.thread); if (th) openThread(th); }
 });
 $("#dClose").onclick = () => $("#detail").close();
@@ -474,10 +617,11 @@ $("#detail").addEventListener("click", (e) => { if (e.target === $("#detail")) $
 $("#authDlg").addEventListener("click", (e) => { if (e.target === $("#authDlg")) $("#authDlg").close(); });
 $("#q").addEventListener("input", (e) => { state.f.q = e.target.value; renderGrid(); });
 $("#zoneSelect").innerHTML = ZONES.map((z) => `<option>${esc(z)}</option>`).join("");
+$("#sortSel").addEventListener("change", (e) => { state.f.sort = e.target.value; renderGrid(); });
 $("#zoneSelect").addEventListener("change", (e) => { state.f.zone = e.target.value; renderGrid(); });
 
 /* ---------- Routing ---------- */
-const TABS = ["browse", "add", "ngo", "me"];
+const TABS = ["browse", "add", "ngos", "ngo", "me"];
 function currentTab() { const h = location.hash.slice(1); return TABS.includes(h) ? h : "browse"; }
 function route() {
   const tab = currentTab();
@@ -486,6 +630,7 @@ function route() {
     if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   if (tab === "ngo") renderNgo();
+  if (tab === "ngos") renderNgos();
   if (tab === "me") renderMe();
   window.scrollTo(0, 0);
 }
@@ -499,15 +644,15 @@ function renderVerify() {
 }
 async function ensureProfile(u) {
   try {
-    const ref = db.collection("users").doc(u.uid);
+    const ref = db.collection("profiles").doc(u.uid);
     const s = await ref.get();
-    if (!s.exists) await ref.set({ name: state.user ? state.user.name : (u.displayName || "Student"), email: u.email || "", ratingSum: 0, ratingCount: 0, createdAt: Date.now() });
+    if (!s.exists) await ref.set({ name: state.user ? state.user.name : (u.displayName || "Student"), ratingSum: 0, ratingCount: 0, createdAt: Date.now() });
   } catch (e) { console.error(e); }
 }
 async function checkAdmin(uid) {
   let ok = false;
   try { ok = (await db.collection("admins").doc(uid).get()).exists; } catch (e) { ok = false; }
-  if (state.user && state.user.uid === uid && state.isAdmin !== ok) { state.isAdmin = ok; renderAuth(); refresh(); }
+  if (state.user && state.user.uid === uid && state.isAdmin !== ok) { state.isAdmin = ok; if (ok) listenAdmin(); renderAuth(); refresh(); }
 }
 function afterVerified(u) { ensureProfile(u); checkAdmin(u.uid); }
 async function checkVerified(manual) {
@@ -563,7 +708,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 window.addEventListener("appinstalled", () => { $("#installBar").hidden = true; installEvt = null; toast("PassOn installed."); });
 
 /* ---------- Start ---------- */
-renderFilters(); renderGrid(); setupAdd(); setupAuth(); renderAuth(); paintTheme(); route();
+renderFilters(); renderGrid(); setupAdd(); setupNgoForm(); setupAuth(); renderAuth(); paintTheme(); route();
 $("#themeBtn").onclick = () => setTheme(effectiveTheme() === "dark" ? "light" : "dark");
 if (window.matchMedia) {
   const dm = window.matchMedia("(prefers-color-scheme: dark)");
@@ -588,7 +733,7 @@ if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
 if (!configured) {
   $("#setupBanner").hidden = false;
 } else {
-  listenItems();
+  listenItems(); listenPublic();
   auth.onAuthStateChanged((u) => {
     if (u) {
       state.user = { uid: u.uid, name: u.displayName || (u.email || "").split("@")[0], email: u.email, verified: u.emailVerified };
@@ -596,7 +741,7 @@ if (!configured) {
       if (u.emailVerified) afterVerified(u);
     } else {
       state.user = null; state.isAdmin = false; stopUser();
-      state.myReqs = []; state.incoming = []; state.threads = []; state.offers = [];
+      state.myReqs = []; state.incoming = []; state.threads = []; state.offers = []; state.myNgo = null; state.allNgos = []; state.ngoInbox = [];
     }
     renderAuth(); refresh();
   });

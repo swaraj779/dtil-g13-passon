@@ -11,9 +11,11 @@ Students and hostel residents can give away or swap usable old items (books, clo
 - Post an item with photo, condition, mode and a "cleaned" tick for hygiene
 - Item details, real chat between owner and requester, and a request button
 - Owners accept or decline requests and mark items as given
-- NGO connect for items nobody claims within 7 days
-- My activity with listings, requests, pickup confirmation and owner rating
-- Admin role that can remove any listing
+- Seller ratings: best-rated sellers appear first with their star rating, low-rated sellers move down with a warning
+- NGO list tab with only approved NGOs. NGOs register with an ID or certificate that the admin checks
+- Donate tab: offer items nobody claims within 7 days to an approved NGO, who gets the offer and can message the donor
+- My activity with listings, requests, pickup confirmation and your own seller rating
+- Admin role that can remove any listing and approve or reject NGOs
 - Dark and light mode switch
 - Installable on a phone from the browser (works like an app)
 
