@@ -1114,14 +1114,61 @@ function renderMe() {
   }).join("") : `<div class="empty">No active chats yet.</div>`;
 }
 
-/* ---------- Auth ---------- */
+/* ---------- Auth & Verification ---------- */
+function renderVerify() {
+  const show = configured && !!state.user && !state.user.verified;
+  const vb = $("#verifyBar");
+  if (vb) {
+    vb.hidden = !show;
+    if (show && $("#verifyEmail")) $("#verifyEmail").textContent = state.user.email || "";
+  }
+}
+
 function renderAuth() {
   $("#authArea").innerHTML = state.user
-    ? `<span class="who">${esc(state.user.name)}</span>${state.isAdmin ? ' <span class="tag you">Admin</span>' : ""} <button class="btn small" type="button" data-act="logout">Log out</button>`
+    ? `<span class="who">${esc(state.user.name)}</span>${state.isAdmin ? ' <span class="tag you" style="background:var(--accent-subtle);color:var(--accent);font-weight:700;">Admin</span>' : ""} <button class="btn small" type="button" data-act="logout">Log out</button>`
     : `<button class="btn small primary" type="button" data-auth="login">Log in</button>`;
   const ok = !configured || (!!state.user && state.user.verified);
   $("#addGate").hidden = ok;
   $("#addForm").hidden = !ok;
+  if ($("#addGateMsg")) {
+    $("#addGateMsg").textContent = state.user
+      ? "Verify your email to post an item. Open the link we emailed you, then tap 'I have verified' at the top."
+      : "Log in with your campus account to post an item.";
+  }
+  if ($("#addGateBtn")) $("#addGateBtn").hidden = !!state.user;
+  renderVerify();
+}
+
+/* ---------- Email Verification Helpers ---------- */
+async function checkVerified(manual) {
+  const u = auth && auth.currentUser;
+  if (!u || !state.user || state.user.verified) return;
+  try {
+    await u.reload();
+    if (u.emailVerified) {
+      await u.getIdToken(true);
+      state.user.verified = true;
+      renderAuth();
+      refresh();
+      afterVerified(u);
+      toast("Email verified! You can now post items. 🎉");
+    } else if (manual) {
+      toast("Not verified yet. Open the link in your email, then tap 'I have verified'.");
+    }
+  } catch (e) { console.error(e); if (manual) toast("Could not check. Try again."); }
+}
+
+async function resendVerify() {
+  const u = auth && auth.currentUser; if (!u) return;
+  try {
+    await u.sendEmailVerification();
+    toast("Verification link sent to " + u.email + ". Check spam too! ✉️");
+  } catch (e) {
+    toast(e.code === "auth/too-many-requests"
+      ? "Wait a minute before requesting again."
+      : "Could not send the link. Try again.");
+  }
 }
 
 function openAuth(mode) {
@@ -1172,6 +1219,17 @@ function setupAuth() {
       renderAuth(); refresh();
     }
   };
+
+  // Email verification buttons
+  const vDone = $("#verifyDone");
+  const vResend = $("#verifyResend");
+  if (vDone) vDone.onclick = () => checkVerified(true);
+  if (vResend) vResend.onclick = resendVerify;
+
+  // Auto-check verification when user returns to tab
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkVerified(false);
+  });
 }
 
 /* ---------- Global Click Dispatcher ---------- */
