@@ -276,13 +276,87 @@
       </form>
     </section>
 
-    <!-- NGO -->
+    <!-- NGO Connect (Verified NGOs, Register NGO & Donate Unclaimed) -->
     <section id="view-ngo" class="view" hidden>
-      <h2>NGO connect</h2>
-      <p class="lead">If nobody on campus claims an item within 7 days, you can offer it to a nearby organisation for pickup.</p>
-      <div id="ngoList" class="ngo-list"></div>
-      <h3>Your unclaimed items</h3>
-      <div id="unclaimed" class="stack"></div>
+      <div class="ngo-header-wrap">
+        <h2>NGO Connect</h2>
+        <p class="lead">Connect with verified organisations to donate items or register your NGO for campus collection drives.</p>
+        
+        <div class="chips seg" role="group" aria-label="NGO views" style="margin: 16px 0 20px;">
+          <button type="button" class="chip" id="segNgoList" aria-pressed="true">🏛️ Verified NGOs &amp; Register</button>
+          <button type="button" class="chip" id="segNgoDonate" aria-pressed="false">📦 Donate 7-Day Unclaimed Items</button>
+        </div>
+      </div>
+
+      <!-- View 1: Verified NGOs & Register Form -->
+      <div id="ngoListSection">
+        <h3>Verified Campus NGOs</h3>
+        <p class="meta">Organisations whose official registration certificates or Darpan IDs were verified by the PassOn admin.</p>
+        <div id="ngoApproved" class="ngo-list" style="margin-top: 12px;"></div>
+
+        <div id="ngoAdmin" hidden style="margin-top: 26px;">
+          <h3>Pending NGO Applications (Admin Review)</h3>
+          <p class="meta">Review uploaded registration certificates and approve or reject.</p>
+          <div id="ngoPending" class="stack" style="margin-top: 10px;"></div>
+        </div>
+
+        <h3 style="margin-top: 32px;">Register Your NGO for Campus Pickups</h3>
+        <div id="ngoGate" class="gate" hidden>
+          <p>Log in with a verified email to register an NGO.</p>
+          <button class="btn primary" type="button" data-auth="login">Log in or sign up</button>
+        </div>
+        <div id="ngoMine" class="stack" hidden style="margin-top: 12px;"></div>
+        <form id="ngoForm" class="form" novalidate style="margin-top: 14px;">
+          <p class="hint">We ask for proof so that students only hand items to verified organisations. The proof photo and ID number are visible only to you and the PassOn admin. Use your NGO's registration certificate, 12A/80G, or Darpan ID.</p>
+          <div class="field">
+            <label for="nName">NGO name</label>
+            <input id="nName" type="text" maxlength="60" placeholder="e.g. Seva Sangh Sangli">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="nArea">Area or city</label>
+              <input id="nArea" type="text" maxlength="50" placeholder="e.g. Pune / Campus vicinity">
+            </div>
+            <div class="field">
+              <label for="nContact">Public contact (phone or email)</label>
+              <input id="nContact" type="text" maxlength="60" placeholder="Shown to students after approval">
+            </div>
+          </div>
+          <fieldset class="field">
+            <legend>Items you accept</legend>
+            <div id="nCats" class="cat-checks"></div>
+          </fieldset>
+          <div class="field">
+            <label for="nNote">Pickup details (optional)</label>
+            <input id="nNote" type="text" maxlength="80" placeholder="e.g. Weekly hostel pickup on Saturdays">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="nIdType">Proof type</label>
+              <select id="nIdType"></select>
+            </div>
+            <div class="field">
+              <label for="nIdNo">Registration or ID number</label>
+              <input id="nIdNo" type="text" maxlength="40" placeholder="e.g. Registration number / Darpan ID">
+            </div>
+          </div>
+          <div class="field">
+            <label for="nProof">Photo of certificate or ID</label>
+            <input id="nProof" type="file" accept="image/*">
+            <img id="nProofPrev" alt="Preview of the proof photo" hidden>
+          </div>
+          <label class="check"><input id="nConsent" type="checkbox"> I confirm these details are true and I am authorized to represent this organisation.</label>
+          <small class="err" id="nErr" hidden></small>
+          <button class="btn primary" id="nBtn" type="submit">Submit for checking</button>
+        </form>
+      </div>
+
+      <!-- View 2: Donate 7-Day Unclaimed Items -->
+      <div id="ngoDonateSection" hidden>
+        <h3>Your unclaimed items</h3>
+        <p class="lead">If nobody on campus claims an item within 7 days, you can offer it directly to a verified NGO for pickup.</p>
+        <div id="unclaimed" class="stack" style="margin-top: 14px;"></div>
+      </div>
     </section>
 
     <!-- Me -->
@@ -463,6 +537,15 @@
         </div>
         <button class="btn primary" type="submit" id="saveReqBtn">Post to Request Board</button>
       </form>
+    </div>
+  </dialog>
+
+  <!-- NGO Proof Review Dialog (Admin) -->
+  <dialog id="ngoReviewDlg" aria-labelledby="nRevTitle">
+    <div class="dlg">
+      <button class="close" id="nRevClose" aria-label="Close">×</button>
+      <h2 id="nRevTitle">Review NGO Registration Proof</h2>
+      <div id="nRevBody" style="margin-top:14px;"></div>
     </div>
   </dialog>
 

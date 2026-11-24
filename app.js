@@ -16,10 +16,41 @@ const CAT_COLORS = {
   Other: "linear-gradient(135deg,#7a7f8c,#42464f)"
 };
 const ZONES = ["All campus", "Hostel A common room", "Hostel B common room", "Girls hostel lobby", "Library entrance", "Main block gate", "Canteen"];
-const NGOS = [
-  { name: "Seva Sangh (Campus Drive)", takes: ["Clothes", "Furniture", "Utensils"], note: "Weekly hostel pickup" },
-  { name: "Pustak Mitra (Book Bank)", takes: ["Books"], note: "Collects textbooks for rural schools" },
-  { name: "Digital Daan (E-Waste Group)", takes: ["Electronics"], note: "Refurbishes study devices" }
+const NGO_ID_TYPES = [
+  "NGO registration certificate",
+  "Darpan (NITI Aayog) ID",
+  "12A or 80G certificate",
+  "Society or trust registration",
+  "Other official document"
+];
+const DEFAULT_NGOS = [
+  {
+    id: "ngo-1",
+    name: "Seva Sangh (Campus Drive)",
+    area: "Pune / Campus vicinity",
+    contact: "contact@sevasangh.org · 9823456780",
+    takes: ["Clothes", "Furniture", "Utensils"],
+    note: "Weekly hostel pickup on Saturdays",
+    status: "approved"
+  },
+  {
+    id: "ngo-2",
+    name: "Pustak Mitra (Book Bank)",
+    area: "Maharashtra rural chapter",
+    contact: "pustakmitra@ngo.in · 9421098765",
+    takes: ["Books"],
+    note: "Collects textbooks for rural students",
+    status: "approved"
+  },
+  {
+    id: "ngo-3",
+    name: "Digital Daan (E-Waste Group)",
+    area: "Citywide collection",
+    contact: "devices@digitaldaan.org",
+    takes: ["Electronics"],
+    note: "Refurbishes devices for school labs",
+    status: "approved"
+  }
 ];
 const MODE_LABEL = { all: "All modes", free: "Free", exchange: "Exchange", sell: "For sale" };
 
@@ -111,6 +142,7 @@ if (configured) {
 const state = {
   user: null,
   items: [], myReqs: [], incoming: [], threads: [], offers: [], requests: [],
+  ngos: DEFAULT_NGOS.slice(), myNgo: null, allNgos: DEFAULT_NGOS.slice(), ngoSubView: "list",
   notifications: [
     { id: "n1", text: "📦 New item listed in Hostel A: Maths notes", time: "10m ago", read: false },
     { id: "n2", text: "🎓 Reminder: Semester end approaching. List unused items!", time: "1h ago", read: false },
@@ -780,17 +812,241 @@ function setupNotifications() {
   $("#notifClose").onclick = () => $("#notifDlg").close();
 }
 
-/* ---------- NGO Connect ---------- */
+/* ---------- NGO Connect (Verified NGOs, Register & Donate) ---------- */
 function renderNgo() {
-  $("#ngoList").innerHTML = NGOS.map((n) => `
-    <div class="row-card"><div><strong>${esc(n.name)}</strong><div class="meta">Takes: ${esc(n.takes.join(", "))} · ${esc(n.note)}</div></div></div>`).join("");
-  const old = state.items.filter((i) => i.ownerId === me() && i.status === "available" && days(i.createdAt) >= 7);
-  $("#unclaimed").innerHTML = (old.length ? old.map((i) => {
-    const ngo = NGOS.find((n) => n.takes.includes(i.cat));
-    const done = state.offers.includes(i.id);
-    return `<div class="row-card"><div><strong>${esc(i.title)}</strong><div class="meta">Listed ${ago(i.createdAt)}, no student taker yet</div></div>
-      ${ngo ? `<button class="btn small primary" data-ngo="${esc(i.id)}" type="button" ${done ? "disabled" : ""}>${done ? "Offer saved" : "Offer to " + esc(ngo.name)}</button>` : `<span class="meta">No NGO takes this category yet</span>`}</div>`;
-  }).join("") : `<div class="empty">None right now. Items without a taker for 7 days will appear here for free NGO donation.</div>`);
+  const isListView = state.ngoSubView !== "donate";
+  const segList = $("#segNgoList");
+  const segDonate = $("#segNgoDonate");
+  if (segList) segList.setAttribute("aria-pressed", String(isListView));
+  if (segDonate) segDonate.setAttribute("aria-pressed", String(!isListView));
+
+  const listSec = $("#ngoListSection");
+  const donateSec = $("#ngoDonateSection");
+  if (listSec) listSec.hidden = !isListView;
+  if (donateSec) donateSec.hidden = isListView;
+
+  if (isListView) {
+    // 1. Approved NGOs
+    const approved = (state.ngos || []).filter(n => n.status === "approved" || !n.status);
+    const apprEl = $("#ngoApproved");
+    if (apprEl) {
+      apprEl.innerHTML = approved.length ? approved.map((n) => `
+        <div class="row-card">
+          <div>
+            <strong>${esc(n.name)}</strong> <span class="tag clean">✓ Verified by admin</span>
+            <div class="meta">${esc(n.area || "Campus vicinity")} · Takes: <b>${esc((n.takes || []).join(", "))}</b></div>
+            <div class="meta">Contact: ${esc(n.contact || "Campus desk")}${n.note ? " · " + esc(n.note) : ""}</div>
+          </div>
+          ${state.isAdmin ? `<button class="btn small danger" data-ngodel="${esc(n.id)}" type="button">Remove</button>` : ""}
+        </div>`).join("") : `<div class="empty">No verified NGOs yet. Register below to be listed.</div>`;
+    }
+
+    // 2. Admin review of pending applications
+    const admSec = $("#ngoAdmin");
+    if (admSec) {
+      admSec.hidden = !state.isAdmin;
+      if (state.isAdmin) {
+        const pending = (state.allNgos || []).filter(n => n.status === "pending");
+        const pendEl = $("#ngoPending");
+        if (pendEl) {
+          pendEl.innerHTML = pending.length ? pending.map((n) => `
+            <div class="row-card">
+              <div>
+                <strong>${esc(n.name)}</strong> <span class="tag swap">Pending Verification</span>
+                <div class="meta">${esc(n.area)} · Contact: ${esc(n.contact)} · ${ago(n.createdAt)}</div>
+                <div class="meta">Takes: ${esc((n.takes || []).join(", "))}</div>
+              </div>
+              <button class="btn small primary" data-review="${esc(n.id)}" type="button">Review proof</button>
+            </div>`).join("") : `<div class="empty">No pending NGO registration applications.</div>`;
+        }
+      }
+    }
+
+    // 3. User's own submitted application status or form
+    const gateEl = $("#ngoGate");
+    const mineEl = $("#ngoMine");
+    const formEl = $("#ngoForm");
+    const isLoggedIn = !configured || !!state.user;
+    if (gateEl) gateEl.hidden = isLoggedIn;
+
+    if (state.myNgo) {
+      if (formEl) formEl.hidden = true;
+      if (mineEl) {
+        mineEl.hidden = false;
+        const s = state.myNgo.status;
+        mineEl.innerHTML = `
+          <div class="row-card" style="border: 2px solid var(--accent);">
+            <div>
+              <strong>Your NGO Application: ${esc(state.myNgo.name)}</strong>
+              <div class="meta">Status: <span class="tag ${s === 'approved' ? 'clean' : 'swap'}">${s === 'approved' ? '✓ Verified & Listed' : '⏳ Pending Admin Verification'}</span></div>
+              <div class="meta">${esc(state.myNgo.area)} · Takes: ${esc((state.myNgo.takes || []).join(", "))}</div>
+            </div>
+            <button class="btn small" data-ngoreset="1" type="button">Cancel & Re-apply</button>
+          </div>`;
+      }
+    } else {
+      if (mineEl) mineEl.hidden = true;
+      if (formEl) formEl.hidden = !isLoggedIn;
+    }
+  } else {
+    // Donate section: items >= 7 days
+    const old = state.items.filter((i) => i.ownerId === me() && i.status === "available" && days(i.createdAt) >= 7);
+    const unEl = $("#unclaimed");
+    if (unEl) {
+      unEl.innerHTML = (old.length ? old.map((i) => {
+        const matchingNgo = (state.ngos || []).find((n) => (n.takes || []).includes(i.cat));
+        const done = state.offers.includes(i.id);
+        return `
+          <div class="row-card">
+            <div>
+              <strong>${esc(i.title)}</strong>
+              <div class="meta">Listed ${ago(i.createdAt)} · Category: ${esc(i.cat)}</div>
+            </div>
+            ${matchingNgo ? `<button class="btn small primary" data-ngo="${esc(i.id)}" data-ngoname="${esc(matchingNgo.name)}" type="button" ${done ? "disabled" : ""}>${done ? "Offer saved" : "Donate to " + esc(matchingNgo.name)}</button>` : `<span class="meta">No matching NGO accepts ${esc(i.cat)}</span>`}
+          </div>`;
+      }).join("") : `<div class="empty">No unclaimed items right now. Items active for more than 7 days will automatically appear here for NGO donation.</div>`);
+    }
+  }
+}
+
+function setupNgoSection() {
+  const nCats = $("#nCats");
+  if (nCats) {
+    nCats.innerHTML = CATS.map((c) => `<label class="check"><input type="checkbox" value="${esc(c)}"> ${esc(c)}</label>`).join("");
+  }
+  const nIdType = $("#nIdType");
+  if (nIdType) {
+    nIdType.innerHTML = NGO_ID_TYPES.map((t) => `<option>${esc(t)}</option>`).join("");
+  }
+
+  const segList = $("#segNgoList");
+  const segDonate = $("#segNgoDonate");
+  if (segList) segList.onclick = () => { state.ngoSubView = "list"; renderNgo(); };
+  if (segDonate) segDonate.onclick = () => { state.ngoSubView = "donate"; renderNgo(); };
+
+  let proofPhoto = "";
+  const nProof = $("#nProof");
+  if (nProof) {
+    nProof.onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      proofPhoto = await compress(f);
+      const prev = $("#nProofPrev");
+      if (prev && proofPhoto) {
+        prev.src = proofPhoto;
+        prev.hidden = false;
+      }
+    };
+  }
+
+  const nForm = $("#ngoForm");
+  if (nForm) {
+    nForm.onsubmit = async (e) => {
+      e.preventDefault();
+      if (needLogin()) return;
+      const err = $("#nErr"); if (err) err.hidden = true;
+      const fail = (m) => { if (err) { err.textContent = m; err.hidden = false; } toast(m); };
+      const name = $("#nName").value.trim();
+      const area = $("#nArea").value.trim();
+      const contact = $("#nContact").value.trim();
+      const note = $("#nNote").value.trim();
+      const idNo = $("#nIdNo").value.trim();
+      const idType = $("#nIdType").value;
+      const takes = Array.from(document.querySelectorAll("#nCats input:checked")).map((x) => x.value);
+
+      if (!name || !area || !contact) return fail("Please fill in NGO name, area, and public contact.");
+      if (!takes.length) return fail("Select at least one category of items your NGO accepts.");
+      if (!idNo) return fail("Enter your NGO registration or Darpan ID number.");
+      if (!proofPhoto) return fail("Please attach a photo of your certificate or official ID.");
+      if (!$("#nConsent").checked) return fail("Please check the confirmation box.");
+
+      const btn = $("#nBtn"); if (btn) btn.disabled = true;
+      const ngoData = {
+        id: "ngo_" + me(),
+        ownerId: me(),
+        name, area, contact, note, takes,
+        idType, idNo, proof: proofPhoto,
+        status: "pending",
+        createdAt: Date.now()
+      };
+
+      if (configured && db) {
+        try {
+          const uid = me(), b = db.batch();
+          b.set(db.collection("ngos").doc(uid), {
+            ownerId: uid, name, area, contact, note, takes, status: "pending", createdAt: Date.now()
+          });
+          b.set(db.collection("ngoProofs").doc(uid), {
+            ownerId: uid, idType, idNo, proof: proofPhoto, createdAt: Date.now()
+          });
+          await b.commit();
+          state.myNgo = ngoData;
+          state.allNgos.push(ngoData);
+          toast("Application submitted! PassOn admin will verify your certificate.");
+        } catch (e2) { dbError(e2); }
+      } else {
+        state.myNgo = ngoData;
+        state.allNgos.push(ngoData);
+        toast("Application submitted! PassOn admin will verify your certificate.");
+      }
+
+      e.target.reset();
+      proofPhoto = "";
+      if ($("#nProofPrev")) $("#nProofPrev").hidden = true;
+      if (btn) btn.disabled = false;
+      renderNgo();
+    };
+  }
+
+  const revClose = $("#nRevClose");
+  if (revClose) revClose.onclick = () => $("#ngoReviewDlg").close();
+}
+
+async function openNgoReview(id) {
+  const n = (state.allNgos || []).find((x) => x.id === id); if (!n) return;
+  const d = $("#ngoReviewDlg");
+  const body = $("#nRevBody");
+  if (body) {
+    body.innerHTML = `
+      <dl class="kv">
+        <dt>Organisation</dt><dd><strong>${esc(n.name)}</strong></dd>
+        <dt>Area</dt><dd>${esc(n.area)}</dd>
+        <dt>Contact</dt><dd>${esc(n.contact)}</dd>
+        <dt>Accepts</dt><dd>${esc((n.takes || []).join(", "))}</dd>
+        <dt>Proof Document</dt><dd><b>${esc(n.idType || "Certificate")}</b> (ID: ${esc(n.idNo || "N/A")})</dd>
+      </dl>
+      ${n.proof ? `<img class="proof" src="${esc(n.proof)}" alt="Registration Certificate Proof">` : `<p class="meta">No certificate photo available.</p>`}
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn primary" id="approveNgoBtn" type="button">✓ Approve NGO</button>
+        <button class="btn danger" id="rejectNgoBtn" type="button">✕ Reject Application</button>
+      </div>`;
+    
+    if (!d.open) d.showModal();
+
+    $("#approveNgoBtn").onclick = async () => {
+      n.status = "approved";
+      if (!state.ngos.find(x => x.id === n.id)) state.ngos.push(n);
+      if (configured && db) {
+        try {
+          await db.collection("ngos").doc(n.ownerId || n.id).update({ status: "approved", reviewedAt: Date.now() });
+        } catch (e) { dbError(e); }
+      }
+      d.close();
+      toast(`Approved "${n.name}"! Now listed in Verified NGOs.`);
+      renderNgo();
+    };
+
+    $("#rejectNgoBtn").onclick = async () => {
+      n.status = "rejected";
+      if (configured && db) {
+        try {
+          await db.collection("ngos").doc(n.ownerId || n.id).update({ status: "rejected", reviewedAt: Date.now() });
+        } catch (e) { dbError(e); }
+      }
+      d.close();
+      toast(`Rejected application for "${n.name}".`);
+      renderNgo();
+    };
+  }
 }
 
 /* ---------- My Activity (Features 5, 6, 17) ---------- */
@@ -938,6 +1194,10 @@ document.addEventListener("click", (e) => {
     setRequest(d.given, "picked", "given");
     showFeedbackCelebration(d.giveritem, d.takername);
   }
+  else if (d.review) openNgoReview(d.review);
+  else if (d.ngodel) { state.ngos = state.ngos.filter(x => x.id !== d.ngodel); renderNgo(); toast("NGO removed."); }
+  else if (d.ngoreset) { state.myNgo = null; renderNgo(); toast("Application reset. You can submit again."); }
+  else if (d.ngo) { state.offers.push(d.ngo); renderNgo(); toast("Donation offer saved for " + (d.ngoname || "NGO") + "! 🎁"); }
   else if (d.respondreq) {
     const req = (state.requests || []).find((r) => r.id === d.respondreq);
     if (req) {
@@ -1046,6 +1306,7 @@ setupAdd();
 setupRequestBoard();
 setupChecklist();
 setupNotifications();
+setupNgoSection();
 setupAuth();
 renderAuth();
 paintTheme();
@@ -1061,6 +1322,15 @@ if (configured && db) {
     state.loaded = true;
     refresh();
   }, (e) => { console.error(e); });
+
+  // Listen to approved NGOs from Firestore
+  try {
+    db.collection("ngos").where("status", "==", "approved").onSnapshot((s) => {
+      const live = s.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      state.ngos = DEFAULT_NGOS.concat(live.filter(l => !DEFAULT_NGOS.find(d => d.id === l.id)));
+      renderNgo();
+    }, () => {});
+  } catch (e) {}
 
   auth.onAuthStateChanged((u) => {
     if (u) {
