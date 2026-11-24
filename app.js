@@ -8,12 +8,12 @@
 
 const CATS = ["Books", "Clothes", "Furniture", "Electronics", "Utensils", "Other"];
 const CAT_COLORS = {
-  Books: "linear-gradient(135deg,#3b6ea5,#1e3f66)",
-  Clothes: "linear-gradient(135deg,#b4577a,#6e2b49)",
-  Furniture: "linear-gradient(135deg,#9a7b4f,#5c4524)",
-  Electronics: "linear-gradient(135deg,#4f8f8b,#25504d)",
-  Utensils: "linear-gradient(135deg,#7a8f4f,#45542a)",
-  Other: "linear-gradient(135deg,#7a7f8c,#42464f)"
+  Books: "linear-gradient(135deg,#3b82f6,#1d4ed8)",
+  Clothes: "linear-gradient(135deg,#f43f5e,#be123c)",
+  Furniture: "linear-gradient(135deg,#f59e0b,#b45309)",
+  Electronics: "linear-gradient(135deg,#06b6d4,#0e7490)",
+  Utensils: "linear-gradient(135deg,#10b981,#047857)",
+  Other: "linear-gradient(135deg,#8b5cf6,#6d28d9)"
 };
 const ZONES = ["All campus", "Hostel A common room", "Hostel B common room", "Girls hostel lobby", "Library entrance", "Main block gate", "Canteen"];
 const NGO_ID_TYPES = [
