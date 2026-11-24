@@ -25,21 +25,48 @@
         <img class="brand-mark" src="logo-mark.png" alt="" width="40" height="28">PassOn
       </a>
       <div class="top-r">
+        <!-- Big Give Button -->
+        <a href="#add" class="btn primary give-btn" id="topGiveBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>Give Item</span>
+        </a>
+        <!-- Notifications Bell -->
+        <button class="icon-btn notif-btn" id="notifBtn" type="button" aria-label="View notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="notif-badge" id="notifBadge" hidden>0</span>
+        </button>
         <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode"></button>
         <div id="authArea"></div>
       </div>
     </div>
     <nav class="tabs wrap" aria-label="Main">
-      <a href="#browse" data-tab="browse">Browse</a>
-      <a href="#add" data-tab="add">Post an item</a>
-      <a href="#ngos" data-tab="ngos">NGO list</a>
-      <a href="#ngo" data-tab="ngo">Donate</a>
-      <a href="#me" data-tab="me">My activity</a>
+      <a href="#browse" data-tab="browse">Browse Items</a>
+      <a href="#requests" data-tab="requests">Request Board</a>
+      <a href="#add" data-tab="add">Post an Item</a>
+      <a href="#ngo" data-tab="ngo">NGO Connect</a>
+      <a href="#me" data-tab="me">My Activity</a>
     </nav>
   </header>
 
   <main class="wrap">
-    <p id="setupBanner" class="banner" hidden>Firebase is not connected yet. Open <code>firebase-config.js</code> and paste your project settings (steps are in SETUP.md).</p>
+    <p id="setupBanner" class="banner" hidden>Firebase is not connected yet. Open <code>firebase-config.js</code> and paste your project settings (steps are in SETUP.md). The app is currently running with offline/demo data.</p>
+    
+    <!-- Feature 4: Reminder Prompt for Semester-End & Hostel Check-Out -->
+    <div id="reminderBanner" class="banner reminder-banner">
+      <div class="reminder-text">
+        <strong>🎓 Semester-End &amp; Hostel Check-out Reminder</strong>
+        <p>Leaving the hostel or changing rooms? Don't bin your usable items! Pass on your mattress, books, kettles &amp; lamps to juniors.</p>
+      </div>
+      <div class="btn-row reminder-actions">
+        <a href="#add" class="btn small primary">📦 List Unused Items</a>
+        <button class="btn small" id="openChecklistBtn" type="button">📋 Packing Checklist</button>
+        <button class="btn small ghost-btn" id="dismissReminderBtn" type="button" aria-label="Dismiss banner">✕</button>
+      </div>
+    </div>
+
     <div id="verifyBar" class="banner verify" hidden>
       <p>Verify your email to post items, send requests and chat. We sent a link to <b id="verifyEmail"></b>. Check the spam folder too.</p>
       <div class="btn-row"><button class="btn small primary" id="verifyDone" type="button">I have verified</button><button class="btn small" id="verifyResend" type="button">Resend link</button></div>
@@ -53,47 +80,118 @@
     <section id="view-browse" class="view" hidden>
       <div class="hero">
         <h1>Old things, new hands, same campus.</h1>
-        <p>Give away, swap or sell books, clothes, furniture and electronics with people in your hostel and department. Free and swap come first, selling is there for items worth a small price.</p>
+        <p>Give away, swap or sell books, clothes, furniture and electronics with people in your hostel and department. Free and swap come first.</p>
       </div>
+      
       <div class="filters">
-        <input id="q" type="search" placeholder="Search items, e.g. mattress, notes, kettle" aria-label="Search items">
-        <label class="zone">
-          <span class="sr">Campus zone</span>
-          <select id="zoneSelect"></select>
-        </label>
-        <div class="chips" id="catChips" role="group" aria-label="Category"></div>
-        <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
-        <label class="zone">
-          <span class="sr">Sort order</span>
-          <select id="sortSel">
-            <option value="rating">Best-rated sellers first</option>
-            <option value="new">Newest first</option>
-          </select>
-        </label>
+        <div class="search-sort-row">
+          <input id="q" type="search" placeholder="Search items, e.g. mattress, notes, kettle" aria-label="Search items">
+          <label class="sort-label">
+            <span class="sr">Sort listings</span>
+            <!-- Feature 10: Visibility ranked by Cleanliness -->
+            <select id="sortSelect" aria-label="Sort listings">
+              <option value="clean" selected>🧼 Cleanest &amp; Verified First</option>
+              <option value="newest">🕒 Newest First</option>
+              <option value="expiring">⏳ Expiring Soon</option>
+              <option value="free">🎁 Free Items First</option>
+            </select>
+          </label>
+          <label class="zone">
+            <span class="sr">Campus zone</span>
+            <select id="zoneSelect"></select>
+          </label>
+        </div>
+
+        <!-- Filter Chips: Categories + Bulky/Light Paths + Hygiene -->
+        <div class="filter-groups">
+          <div class="chips" id="catChips" role="group" aria-label="Category"></div>
+          <div class="chips" id="sizeChips" role="group" aria-label="Item Bulkiness">
+            <button type="button" class="chip" data-size="all" aria-pressed="true">All Sizes</button>
+            <button type="button" class="chip" data-size="light" aria-pressed="false">🎒 Light (Books/Clothes)</button>
+            <button type="button" class="chip" data-size="bulky" aria-pressed="false">🛋️ Bulky (Mattress/Furniture)</button>
+          </div>
+          <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
+        </div>
       </div>
-      <p id="count" class="count" aria-live="polite"></p>
+
+      <div class="grid-meta-bar">
+        <p id="count" class="count" aria-live="polite"></p>
+        <span class="hygiene-ranking-indicator" id="rankingBadge">🧼 Cleanliness Ranked: Verified hygienic items appear first</span>
+      </div>
+
       <div id="grid" class="grid"></div>
     </section>
 
-    <!-- Add -->
+    <!-- Feature 7: Request Board (Students post what they need, donors respond) -->
+    <section id="view-requests" class="view" hidden>
+      <div class="req-hero">
+        <div class="req-hero-content">
+          <h2>Campus Request Board</h2>
+          <p class="lead">Students post what they urgently need for their semester or room. Got spare items? Respond and help out!</p>
+        </div>
+        <button class="btn primary" id="openNewReqBtn" type="button">+ Post What You Need</button>
+      </div>
+
+      <div class="filters req-filters">
+        <input id="reqSearch" type="search" placeholder="Search requests, e.g. calculator, kettle, 2nd sem maths" aria-label="Search requests">
+        <div class="chips" id="reqCatChips" role="group" aria-label="Request categories"></div>
+      </div>
+
+      <p id="reqCount" class="count" aria-live="polite"></p>
+      <div id="reqGrid" class="stack"></div>
+    </section>
+
+    <!-- Add Item (Features 1, 2, 3, 6, 12, 14) -->
     <section id="view-add" class="view" hidden>
       <h2>Post an item</h2>
-      <p class="lead">Takes under a minute. Add a photo, pick a mode, choose where it can be picked up.</p>
+      <p class="lead">Add a photo to auto-fill details, or fill them manually. Give in under 30 seconds!</p>
+      
       <div id="addGate" class="gate" hidden>
         <p id="addGateMsg">Log in to post an item.</p>
         <button class="btn primary" id="addGateBtn" type="button" data-auth="login">Log in or sign up</button>
       </div>
+
       <form id="addForm" class="form" novalidate>
-        <div class="field">
-          <label for="fPhoto">Photo</label>
-          <input id="fPhoto" type="file" accept="image/*">
-          <img id="photoPrev" alt="Preview of the selected photo" hidden>
+        <!-- Feature 1 & 2: One-Photo Upload + Auto-fill -->
+        <div class="field photo-field">
+          <label for="fPhoto">
+            <strong>Photo (Take or upload)</strong>
+            <span class="field-hint">Auto-fills title, category &amp; bulkiness instantly</span>
+          </label>
+          <div class="photo-dropzone" id="photoDropzone">
+            <input id="fPhoto" type="file" accept="image/*">
+            <div class="dropzone-text" id="dropzoneText">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Tap to take or choose photo</span>
+              <small>Auto-detects item &amp; category</small>
+            </div>
+            <img id="photoPrev" alt="Preview of selected photo" hidden>
+          </div>
+          <div id="autoFillAlert" class="autofill-banner" hidden>
+            <span>✨ <strong>Auto-filled:</strong> <span id="autoFillDetails"></span></span>
+          </div>
         </div>
+
+        <!-- Quick Tag Suggestions -->
+        <div class="field">
+          <label>Quick Suggestions (1-tap fill)</label>
+          <div class="chips suggestion-chips" id="suggestionChips">
+            <button type="button" class="chip small" data-fill="book">📚 Textbook / Notes</button>
+            <button type="button" class="chip small" data-fill="kettle">⚡ Electric Kettle</button>
+            <button type="button" class="chip small" data-fill="mattress">🛏️ Single Mattress</button>
+            <button type="button" class="chip small" data-fill="chair">🪑 Study Chair</button>
+            <button type="button" class="chip small" data-fill="hoodie">👕 Warm Hoodie</button>
+            <button type="button" class="chip small" data-fill="cooler">❄️ Room Cooler</button>
+            <button type="button" class="chip small" data-fill="lamp">💡 Table Lamp</button>
+          </div>
+        </div>
+
         <div class="field">
           <label for="fTitle">What is it?</label>
           <input id="fTitle" type="text" maxlength="60" placeholder="e.g. Engineering Mathematics notes, 2 semesters" required>
           <small class="err" id="eTitle" hidden>Add a short name for the item.</small>
         </div>
+
         <div class="row2">
           <div class="field">
             <label for="fCat">Category</label>
@@ -108,6 +206,28 @@
             </select>
           </div>
         </div>
+
+        <!-- Feature 12: Separate paths for light and bulky items -->
+        <div class="field">
+          <label>Item Handling &amp; Bulkiness</label>
+          <div class="size-toggle-group">
+            <label class="size-card">
+              <input type="radio" name="itemSize" value="light" checked>
+              <div class="size-card-in">
+                <strong>🎒 Light Item</strong>
+                <span>Books, clothes, small electronics. Easy to carry or room drop.</span>
+              </div>
+            </label>
+            <label class="size-card">
+              <input type="radio" name="itemSize" value="bulky">
+              <div class="size-card-in">
+                <strong>🛋️ Bulky Item</strong>
+                <span>Mattress, chair, table, cooler. Requires room pickup or trolley.</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <fieldset class="field">
           <legend>Mode</legend>
           <label class="radio"><input type="radio" name="mode" value="free" checked> Give for free</label>
@@ -117,6 +237,7 @@
           <input id="fPrice" type="number" min="1" max="100000" inputmode="numeric" placeholder="Price in rupees" hidden aria-label="Price in rupees">
           <small class="err" id="ePrice" hidden>Enter a price of at least 1 rupee.</small>
         </fieldset>
+
         <div class="row2">
           <div class="field">
             <label for="fZone">Pickup point</label>
@@ -124,81 +245,42 @@
           </div>
           <div class="field">
             <label for="fNote">Note (optional)</label>
-            <input id="fNote" type="text" maxlength="80" placeholder="e.g. Available after 6 pm">
+            <input id="fNote" type="text" maxlength="80" placeholder="e.g. Available after 6 pm, Room 312">
           </div>
         </div>
-        <label class="check"><input id="fClean" type="checkbox"> I have cleaned or sanitised this item</label>
-        <p class="hint">Buyers worry most about hygiene on used items like bedding and clothes. Tick this only if it is true.</p>
-        <button class="btn primary" id="addBtn" type="submit">Post item</button>
+
+        <!-- Feature 14: Voice Note for item description -->
+        <div class="field voice-field">
+          <label>Voice Note (Optional)</label>
+          <div class="voice-row">
+            <button class="btn small" id="voiceRecordBtn" type="button">🎙️ Record 10s voice note</button>
+            <audio id="voicePlayer" controls hidden></audio>
+            <span id="voiceStatus" class="meta">Explain condition or pickup in your voice</span>
+          </div>
+        </div>
+
+        <!-- Feature 3: Hygiene tag -->
+        <div class="hygiene-box">
+          <label class="check">
+            <input id="fClean" type="checkbox" checked> 
+            <strong>🧼 I have cleaned, washed or sanitised this item</strong>
+          </label>
+          <p class="hint">Cleaned items get ranked higher and receive 2x more requests from students. Tick this only if true.</p>
+        </div>
+
+        <!-- Big Give / 1-Tap Post Button -->
+        <button class="btn primary big-post-btn" id="addBtn" type="submit">
+          <span>Give Item (1-Tap Post)</span>
+          <small>Expires in 7 days · Can be renewed</small>
+        </button>
       </form>
     </section>
 
-    <!-- NGO list -->
-    <section id="view-ngos" class="view" hidden>
-      <h2>NGO list</h2>
-      <p class="lead">Only organisations whose registration proof was checked by the PassOn admin are listed here.</p>
-      <div id="ngoApproved" class="ngo-list"></div>
-
-      <div id="ngoAdmin" hidden>
-        <h3>Pending NGO requests (admin)</h3>
-        <div id="ngoPending" class="stack"></div>
-      </div>
-
-      <h3>Register your NGO</h3>
-      <div id="ngoGate" class="gate" hidden>
-        <p>Log in with a verified email to register an NGO.</p>
-        <button class="btn primary" type="button" data-auth="login">Log in or sign up</button>
-      </div>
-      <div id="ngoMine" class="stack" hidden></div>
-      <form id="ngoForm" class="form" novalidate hidden>
-        <p class="hint">We ask for proof so that students only hand items to real organisations. The proof photo and ID number are visible only to you and the PassOn admin. Use the organisation's registration certificate or Darpan ID. Do not upload a personal Aadhaar card.</p>
-        <div class="field">
-          <label for="nName">NGO name</label>
-          <input id="nName" type="text" maxlength="60" placeholder="e.g. Seva Sangh Sangli">
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="nArea">Area or city</label>
-            <input id="nArea" type="text" maxlength="50" placeholder="e.g. Kopargaon">
-          </div>
-          <div class="field">
-            <label for="nContact">Public contact (phone or email)</label>
-            <input id="nContact" type="text" maxlength="60" placeholder="Shown to students after approval">
-          </div>
-        </div>
-        <fieldset class="field">
-          <legend>Items you accept</legend>
-          <div id="nCats" class="cat-checks"></div>
-        </fieldset>
-        <div class="field">
-          <label for="nNote">Pickup details (optional)</label>
-          <input id="nNote" type="text" maxlength="80" placeholder="e.g. Pickup within 2 days">
-        </div>
-        <div class="row2">
-          <div class="field">
-            <label for="nIdType">Proof type</label>
-            <select id="nIdType"></select>
-          </div>
-          <div class="field">
-            <label for="nIdNo">Registration or ID number</label>
-            <input id="nIdNo" type="text" maxlength="40">
-          </div>
-        </div>
-        <div class="field">
-          <label for="nProof">Photo of the certificate or ID</label>
-          <input id="nProof" type="file" accept="image/*">
-          <img id="nProofPrev" alt="Preview of the proof photo" hidden>
-        </div>
-        <label class="check"><input id="nConsent" type="checkbox"> I confirm these details are true and I am allowed to represent this organisation.</label>
-        <small class="err" id="nErr" hidden></small>
-        <button class="btn primary" id="nBtn" type="submit">Submit for checking</button>
-      </form>
-    </section>
-
-    <!-- Donate -->
+    <!-- NGO -->
     <section id="view-ngo" class="view" hidden>
-      <h2>Donate to an NGO</h2>
-      <p class="lead">If nobody on campus claims an item within 7 days, offer it to a verified organisation from the <a href="#ngos">NGO list</a>.</p>
+      <h2>NGO connect</h2>
+      <p class="lead">If nobody on campus claims an item within 7 days, you can offer it to a nearby organisation for pickup.</p>
+      <div id="ngoList" class="ngo-list"></div>
       <h3>Your unclaimed items</h3>
       <div id="unclaimed" class="stack"></div>
     </section>
@@ -212,16 +294,36 @@
       </div>
       <div id="meBody">
         <div class="stats" id="stats"></div>
+
+        <!-- Feature 17 & Feature 5: Badges & Impact wall -->
+        <div class="impact-section" id="impactSection">
+          <h3>🌱 Your Campus Giving Impact</h3>
+          <div class="badges-row" id="badgesRow">
+            <div class="badge-card"><span class="badge-icon">🏆</span><div><strong>Campus Giver</strong><p class="meta">Keeping usable goods in circulation</p></div></div>
+            <div class="badge-card"><span class="badge-icon">🧼</span><div><strong>Hygiene Champion</strong><p class="meta">Listing verified sanitized items</p></div></div>
+            <div class="badge-card"><span class="badge-icon">⚡</span><div><strong>Fast Relister</strong><p class="meta">1-tap renewal active</p></div></div>
+          </div>
+          
+          <div class="gratitude-wall" id="gratitudeWall">
+            <h4>💬 Thank-You Notes Received</h4>
+            <div class="notes-list" id="notesList">
+              <div class="note-pill">💌 <em>"Thanks a lot for the Maths notes! Made my end-sem so much easier!"</em> — Rahul, Hostel B</div>
+            </div>
+          </div>
+        </div>
+
         <h3>My listings</h3>
         <div id="myItems" class="stack"></div>
+        
         <h3>Requests on my items</h3>
         <div id="incoming" class="stack"></div>
-        <h3>My requests</h3>
+        
+        <h3>My requests on items</h3>
         <div id="myReqs" class="stack"></div>
-        <div id="ngoInboxBox" hidden>
-          <h3>Donation offers for your NGO</h3>
-          <div id="ngoInbox" class="stack"></div>
-        </div>
+        
+        <h3>My posted needs (Request Board)</h3>
+        <div id="myPostedNeeds" class="stack"></div>
+
         <h3>Messages</h3>
         <div id="threads" class="stack"></div>
       </div>
@@ -229,11 +331,17 @@
   </main>
 
   <footer class="wrap foot">
-    <p>DTIL · Team G13 · SDG 12 Responsible Consumption and Production · Prototype</p>
-    <p>Install on your phone: in Chrome open the menu and tap Install app or Add to Home screen. On iPhone use Share, then Add to Home Screen.</p>
+    <p>PassOn · DTIL Team G13 · SDG 12 Responsible Consumption and Production</p>
+    <p>Install on your phone: in Chrome open the menu and tap Install app. On iPhone use Share, then Add to Home Screen.</p>
   </footer>
 
-  <!-- Item detail and chat -->
+  <!-- Floating Action Button for 1-Tap Give -->
+  <a href="#add" class="fab-give" id="fabGive" aria-label="Post an item">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <span>Give</span>
+  </a>
+
+  <!-- Item detail dialog -->
   <dialog id="detail" aria-labelledby="dTitle">
     <div class="dlg">
       <button class="close" id="dClose" aria-label="Close">×</button>
@@ -241,7 +349,124 @@
     </div>
   </dialog>
 
-  <!-- Login and sign up -->
+  <!-- Feature 9: QR Code Notice Dialog -->
+  <dialog id="qrDlg" aria-labelledby="qrTitle">
+    <div class="dlg">
+      <button class="close" id="qrClose" aria-label="Close">×</button>
+      <h2 id="qrTitle">Notice Board Poster &amp; QR</h2>
+      <p class="meta">Stick this on your hostel floor notice board or room door for instant student discovery.</p>
+      <div class="qr-poster" id="qrPoster">
+        <div class="poster-head">
+          <span class="poster-logo">PassOn Campus Notice</span>
+          <span class="poster-zone" id="posterZone">Hostel Common Room</span>
+        </div>
+        <h3 id="posterTitle">Item Title</h3>
+        <div class="poster-tags" id="posterTags"></div>
+        <div class="poster-qr-box">
+          <img id="posterQrImg" alt="QR Code to open this listing" width="180" height="180">
+          <p class="poster-scan-text">📱 Scan with phone camera to request or message giver</p>
+        </div>
+        <div class="poster-foot">PassOn · Campus Give &amp; Swap · DTIL G13</div>
+      </div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn primary" id="printQrBtn" type="button">🖨️ Print / Save Notice</button>
+        <button class="btn" id="copyLinkBtn" type="button">🔗 Copy Link</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Feature 5: Feedback & Thank-You Celebration Dialog -->
+  <dialog id="feedbackDlg" aria-labelledby="fbTitle">
+    <div class="dlg text-center">
+      <button class="close" id="fbClose" aria-label="Close">×</button>
+      <div class="celebration-icon">🎉</div>
+      <h2 id="fbTitle">Your item reached someone!</h2>
+      <p class="lead" id="fbMsg">Thank you for passing on your item and keeping campus waste out of the landfill.</p>
+      <div class="thank-you-card" id="fbCard">
+        <span class="heart-icon">💚</span>
+        <p><strong>Impact Made:</strong> 1 item given a 2nd life on campus!</p>
+        <p class="meta" id="fbNoteText">A thank-you note was added to your impact wall.</p>
+      </div>
+      <button class="btn primary" id="fbDoneBtn" type="button" style="margin-top:16px;">Awesome!</button>
+    </div>
+  </dialog>
+
+  <!-- Feature 15: Pre-checkout Packing Checklist Dialog -->
+  <dialog id="checklistDlg" aria-labelledby="chkTitle">
+    <div class="dlg">
+      <button class="close" id="chkClose" aria-label="Close">×</button>
+      <h2 id="chkTitle">Hostel Check-out Checklist</h2>
+      <p class="meta">Packing up? Don't abandon or bin these top 6 items. Tap "Pass On" to give them to juniors in 1-tap!</p>
+      <div class="checklist-items" id="checklistItems">
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Semester Textbooks &amp; Notes</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="book">Pass On</button>
+        </div>
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Single Bed Mattress &amp; Pillows</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="mattress">Pass On</button>
+        </div>
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Electric Kettle &amp; Iron</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="kettle">Pass On</button>
+        </div>
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Plastic Bucket &amp; Mugs</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="bucket">Pass On</button>
+        </div>
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Study Table Lamp / Extension Board</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="lamp">Pass On</button>
+        </div>
+        <div class="check-item-row">
+          <label class="check"><input type="checkbox"> <strong>Clothes Hangers &amp; Laundry Bag</strong></label>
+          <button class="btn small primary" type="button" data-checkgive="hangers">Pass On</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Feature 8: Notifications Dialog -->
+  <dialog id="notifDlg" aria-labelledby="notifTitle">
+    <div class="dlg">
+      <button class="close" id="notifClose" aria-label="Close">×</button>
+      <h2 id="notifTitle">Nearby Notifications</h2>
+      <p class="meta">Updates for your hostel floor and campus zone</p>
+      <div id="notifList" class="stack" style="margin-top:14px;"></div>
+    </div>
+  </dialog>
+
+  <!-- Feature 7: Post a Request Dialog -->
+  <dialog id="newReqDlg" aria-labelledby="newReqTitle">
+    <div class="dlg">
+      <button class="close" id="newReqClose" aria-label="Close">×</button>
+      <h2 id="newReqTitle">Post What You Need</h2>
+      <p class="lead">Let fellow students know what item you are looking for.</p>
+      <form id="newReqForm" class="form" novalidate>
+        <div class="field">
+          <label for="reqItemTitle">Item needed</label>
+          <input id="reqItemTitle" type="text" maxlength="60" placeholder="e.g. 3rd Sem Mechanical Books, or Kettle" required>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="reqCatSelect">Category</label>
+            <select id="reqCatSelect"></select>
+          </div>
+          <div class="field">
+            <label for="reqZoneSelect">Your Hostel / Zone</label>
+            <select id="reqZoneSelect"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="reqNote">Additional detail (optional)</label>
+          <input id="reqNote" type="text" maxlength="100" placeholder="e.g. Needed before Monday exams">
+        </div>
+        <button class="btn primary" type="submit" id="saveReqBtn">Post to Request Board</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Login and sign up dialog -->
   <dialog id="authDlg" aria-labelledby="aTitle">
     <div class="dlg">
       <button class="close" id="aClose" aria-label="Close">×</button>

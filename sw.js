@@ -1,5 +1,5 @@
 /* PassOn service worker: keeps the app shell available and tries the network first so updates show up. */
-const CACHE = "passon-v2";
+const CACHE = "passon-v1";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "firebase-config.js", "logo-mark.png", "favicon.png", "manifest.webmanifest", "icon-192.png"];
 
 self.addEventListener("install", (e) => {
