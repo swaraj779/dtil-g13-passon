@@ -7,8 +7,8 @@
   <meta name="description" content="PassOn helps hostel students give away, swap or sell usable old items inside campus. DTIL project, Team G13.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <meta name="theme-color" content="#f3f6f5">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#f8fafc">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -22,13 +22,13 @@
   <header class="top">
     <div class="wrap top-in">
       <a class="brand" href="#browse" aria-label="PassOn home">
-        <img class="brand-mark" src="logo-mark.png" alt="" width="40" height="28">PassOn
+        <img class="brand-mark" src="logo-mark.png" alt="" width="36" height="26">PassOn
       </a>
       <div class="top-r">
         <!-- Big Give Button -->
-        <a href="#add" class="btn primary give-btn" id="topGiveBtn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-          <span>Give Item</span>
+        <a href="#add" class="give-btn" id="topGiveBtn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Give an Item</span>
         </a>
         <!-- Notifications Bell -->
         <button class="icon-btn notif-btn" id="notifBtn" type="button" aria-label="View notifications">
@@ -38,13 +38,13 @@
           </svg>
           <span class="notif-badge" id="notifBadge" hidden>0</span>
         </button>
-        <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode"></button>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle theme"></button>
         <div id="authArea"></div>
       </div>
     </div>
     <nav class="tabs wrap" aria-label="Main">
-      <a href="#browse" data-tab="browse">Browse Items</a>
-      <a href="#requests" data-tab="requests">Request Board</a>
+      <a href="#browse" data-tab="browse">Browse</a>
+      <a href="#requests" data-tab="requests">Campus Requests</a>
       <a href="#add" data-tab="add">Post an Item</a>
       <a href="#ngo" data-tab="ngo">NGO Connect</a>
       <a href="#me" data-tab="me">My Activity</a>
@@ -54,16 +54,17 @@
   <main class="wrap">
     <p id="setupBanner" class="banner" hidden>Firebase is not connected yet. Open <code>firebase-config.js</code> and paste your project settings (steps are in SETUP.md). The app is currently running with offline/demo data.</p>
     
-    <!-- Feature 4: Reminder Prompt for Semester-End & Hostel Check-Out -->
-    <div id="reminderBanner" class="banner reminder-banner">
+    <!-- Feature 4: Refined Campus Announcement Banner -->
+    <div id="reminderBanner" class="reminder-banner">
       <div class="reminder-text">
-        <strong>🎓 Semester-End &amp; Hostel Check-out Reminder</strong>
-        <p>Leaving the hostel or changing rooms? Don't bin your usable items! Pass on your mattress, books, kettles &amp; lamps to juniors.</p>
+        <span class="reminder-badge">Hostel Notice</span>
+        <strong>Semester End &amp; Room Vacating Reminder</strong>
+        <p>Leaving the hostel or changing rooms? Pass on your mattress, books, kettles &amp; lamps to juniors instead of throwing them away.</p>
       </div>
       <div class="btn-row reminder-actions">
-        <a href="#add" class="btn small primary">📦 List Unused Items</a>
-        <button class="btn small" id="openChecklistBtn" type="button">📋 Packing Checklist</button>
-        <button class="btn small ghost-btn" id="dismissReminderBtn" type="button" aria-label="Dismiss banner">✕</button>
+        <a href="#add" class="btn small primary">Post Unused Items</a>
+        <button class="btn small" id="openChecklistBtn" type="button">Packing Checklist</button>
+        <button class="ghost-btn" id="dismissReminderBtn" type="button" aria-label="Dismiss banner">✕</button>
       </div>
     </div>
 
@@ -90,10 +91,10 @@
             <span class="sr">Sort listings</span>
             <!-- Feature 10: Visibility ranked by Cleanliness -->
             <select id="sortSelect" aria-label="Sort listings">
-              <option value="clean" selected>🧼 Cleanest &amp; Verified First</option>
-              <option value="newest">🕒 Newest First</option>
-              <option value="expiring">⏳ Expiring Soon</option>
-              <option value="free">🎁 Free Items First</option>
+              <option value="clean" selected>Verified Clean First</option>
+              <option value="newest">Newest First</option>
+              <option value="expiring">Expiring Soon</option>
+              <option value="free">Free Items First</option>
             </select>
           </label>
           <label class="zone">
@@ -107,7 +108,20 @@
           <div class="chips" id="catChips" role="group" aria-label="Category"></div>
           <div class="chips" id="sizeChips" role="group" aria-label="Item Bulkiness">
             <button type="button" class="chip" data-size="all" aria-pressed="true">All Sizes</button>
-            <button type="button" class="chip" data-size="light" aria-pressed="false">🎒 Light (Books/Clothes)</button>
+            <button type="button" class="chip" data-size="light" aria-pressed="false">Compact</button>
+            <button type="button" class="chip" data-size="bulky" aria-pressed="false">Bulky / Furniture</button>
+          </div>
+          <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
+        </div>
+      </div>
+
+      <div class="grid-meta-bar">
+        <p id="count" class="count" aria-live="polite"></p>
+        <span class="hygiene-ranking-indicator" id="rankingBadge">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          Cleanliness Ranked: Verified hygienic items appear first
+        </span>
+      </div>
             <button type="button" class="chip" data-size="bulky" aria-pressed="false">🛋️ Bulky (Mattress/Furniture)</button>
           </div>
           <div class="chips" id="modeChips" role="group" aria-label="Mode"></div>
@@ -174,15 +188,15 @@
 
         <!-- Quick Tag Suggestions -->
         <div class="field">
-          <label>Quick Suggestions (1-tap fill)</label>
+          <label>Quick Suggestions</label>
           <div class="chips suggestion-chips" id="suggestionChips">
-            <button type="button" class="chip small" data-fill="book">📚 Textbook / Notes</button>
-            <button type="button" class="chip small" data-fill="kettle">⚡ Electric Kettle</button>
-            <button type="button" class="chip small" data-fill="mattress">🛏️ Single Mattress</button>
-            <button type="button" class="chip small" data-fill="chair">🪑 Study Chair</button>
-            <button type="button" class="chip small" data-fill="hoodie">👕 Warm Hoodie</button>
-            <button type="button" class="chip small" data-fill="cooler">❄️ Room Cooler</button>
-            <button type="button" class="chip small" data-fill="lamp">💡 Table Lamp</button>
+            <button type="button" class="chip small" data-fill="book">Textbook / Notes</button>
+            <button type="button" class="chip small" data-fill="kettle">Electric Kettle</button>
+            <button type="button" class="chip small" data-fill="mattress">Single Mattress</button>
+            <button type="button" class="chip small" data-fill="chair">Study Chair</button>
+            <button type="button" class="chip small" data-fill="hoodie">Campus Hoodie</button>
+            <button type="button" class="chip small" data-fill="cooler">Room Cooler</button>
+            <button type="button" class="chip small" data-fill="lamp">Table Lamp</button>
           </div>
         </div>
 
@@ -214,14 +228,14 @@
             <label class="size-card">
               <input type="radio" name="itemSize" value="light" checked>
               <div class="size-card-in">
-                <strong>🎒 Light Item</strong>
+                <strong>Compact / Light Item</strong>
                 <span>Books, clothes, small electronics. Easy to carry or room drop.</span>
               </div>
             </label>
             <label class="size-card">
               <input type="radio" name="itemSize" value="bulky">
               <div class="size-card-in">
-                <strong>🛋️ Bulky Item</strong>
+                <strong>Bulky / Heavy Item</strong>
                 <span>Mattress, chair, table, cooler. Requires room pickup or trolley.</span>
               </div>
             </label>
@@ -229,7 +243,7 @@
         </div>
 
         <fieldset class="field">
-          <legend>Mode</legend>
+          <legend>Listing Type</legend>
           <label class="radio"><input type="radio" name="mode" value="free" checked> Give for free</label>
           <label class="radio"><input type="radio" name="mode" value="exchange"> Exchange for something</label>
           <label class="radio"><input type="radio" name="mode" value="sell"> Sell for a price</label>
@@ -253,7 +267,10 @@
         <div class="field voice-field">
           <label>Voice Note (Optional)</label>
           <div class="voice-row">
-            <button class="btn small" id="voiceRecordBtn" type="button">🎙️ Record 10s voice note</button>
+            <button class="btn small" id="voiceRecordBtn" type="button">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <span>Record voice note</span>
+            </button>
             <audio id="voicePlayer" controls hidden></audio>
             <span id="voiceStatus" class="meta">Explain condition or pickup in your voice</span>
           </div>
@@ -263,15 +280,14 @@
         <div class="hygiene-box">
           <label class="check">
             <input id="fClean" type="checkbox" checked> 
-            <strong>🧼 I have cleaned, washed or sanitised this item</strong>
+            <strong>I have cleaned, washed or sanitised this item</strong>
           </label>
-          <p class="hint">Cleaned items get ranked higher and receive 2x more requests from students. Tick this only if true.</p>
+          <p class="hint">Cleaned items are ranked higher in search results and receive more requests. Tick only if accurate.</p>
         </div>
 
         <!-- Big Give / 1-Tap Post Button -->
-        <button class="btn primary big-post-btn" id="addBtn" type="submit">
-          <span>Give Item (1-Tap Post)</span>
-          <small>Expires in 7 days · Can be renewed</small>
+        <button class="btn primary" id="addBtn" type="submit" style="padding: 12px 20px; font-size: 1rem; width: 100%;">
+          Post Item Listing
         </button>
       </form>
     </section>

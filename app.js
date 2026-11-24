@@ -203,11 +203,11 @@ function tagsFor(i) {
   return `
     <div class="tags">
       ${modeTag(i)}
-      ${i.clean ? '<span class="tag clean" title="Sanitised & Cleaned by giver">🧼 Cleaned</span>' : ""}
-      <span class="tag ${i.size === 'bulky' ? 'bulky' : 'light'}">${i.size === 'bulky' ? '🛋️ Bulky' : '🎒 Light'}</span>
-      ${isExpired ? '<span class="tag expired">⏳ Expired (7d)</span>' : `<span class="tag" style="background:var(--bg);color:var(--muted)">⏳ ${daysLeft}d left</span>`}
+      ${i.clean ? '<span class="tag clean" title="Sanitised by giver"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" style="display:inline"><polyline points="20 6 9 17 4 12"/></svg> Sanitized</span>' : ""}
+      <span class="tag ${i.size === 'bulky' ? 'bulky' : 'light'}">${i.size === 'bulky' ? 'Bulky' : 'Compact'}</span>
+      ${isExpired ? '<span class="tag expired">Expired (7d)</span>' : `<span class="tag" style="background:var(--surface-subtle);color:var(--muted);font-weight:500;">${daysLeft}d left</span>`}
       ${i.status === "reserved" ? '<span class="tag reserved">Reserved</span>' : ""}
-      ${i.ownerId === me() ? '<span class="tag you">Yours</span>' : ""}
+      ${i.ownerId === me() ? '<span class="tag you">Your item</span>' : ""}
     </div>`;
 }
 
