@@ -1184,6 +1184,7 @@ function setAuthMode(m) {
   $("#aTitle").textContent = su ? "Create account" : "Log in";
   $("#aSubmit").textContent = su ? "Sign up" : "Log in";
   $("#nameField").hidden = !su;
+  if ($("#forgotRow")) $("#forgotRow").hidden = su;
   $("#segLogin").setAttribute("aria-pressed", String(!su));
   $("#segSignup").setAttribute("aria-pressed", String(su));
 }
@@ -1225,6 +1226,33 @@ function setupAuth() {
   const vResend = $("#verifyResend");
   if (vDone) vDone.onclick = () => checkVerified(true);
   if (vResend) vResend.onclick = resendVerify;
+
+  // Forgot password button
+  const fBtn = $("#forgotPassBtn");
+  if (fBtn) {
+    fBtn.onclick = async () => {
+      const email = $("#aEmail").value.trim();
+      const err = $("#aErr");
+      if (!email) {
+        err.textContent = "Please enter your email above first.";
+        err.hidden = false;
+        $("#aEmail").focus();
+        return;
+      }
+      if (configured && auth) {
+        try {
+          await auth.sendPasswordResetEmail(email);
+          toast("Password reset email sent to " + email + "! Check your inbox/spam.");
+          err.hidden = true;
+        } catch (e) {
+          err.textContent = e.message;
+          err.hidden = false;
+        }
+      } else {
+        toast("Password reset demo: Link simulated for " + email);
+      }
+    };
+  }
 
   // Auto-check verification when user returns to tab
   document.addEventListener("visibilitychange", () => {
