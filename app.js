@@ -1053,8 +1053,10 @@ async function openNgoReview(id) {
 const STATUS_TEXT = { requested: "Waiting for owner response", accepted: "Accepted, arrange pickup", declined: "Declined", picked: "Picked up & Passed On" };
 
 function renderMe() {
-  $("#meGate").hidden = !!state.user || !configured;
-  $("#meBody").hidden = !state.user && configured;
+  const hasUser = !!state.user;
+  $("#meGate").hidden = hasUser;
+  $("#meBody").hidden = !hasUser;
+  if (!hasUser) return;
   
   const mine = state.items.filter((i) => i.ownerId === me());
   const passed = mine.filter((i) => i.status === "given").length + state.myReqs.filter((r) => r.status === "picked").length;
@@ -1332,13 +1334,98 @@ if (configured && db) {
     }, () => {});
   } catch (e) {}
 
+/* ---------- User Live Data & Admin Check ---------- */
+function stopUser() {
+  if (state.unsubUser && state.unsubUser.length) {
+    state.unsubUser.forEach((f) => f());
+    state.unsubUser = [];
+  }
+}
+
+const docs = (s) => s.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+
+function listenUser(uid) {
+  stopUser();
+  if (!configured || !db) return;
+  const on = (q, key, map) => state.unsubUser.push(q.onSnapshot((s) => {
+    state[key] = map ? map(s) : docs(s);
+    refresh();
+  }, (e) => console.error("listenUser error:", e)));
+
+  on(db.collection("requests").where("requesterId", "==", uid), "myReqs");
+  on(db.collection("requests").where("ownerId", "==", uid), "incoming");
+  on(db.collection("threads").where("participants", "array-contains", uid), "threads");
+  on(db.collection("ngoOffers").where("ownerId", "==", uid), "offers", (s) => s.docs.map((d) => d.data().itemId));
+  state.unsubUser.push(db.collection("ngos").doc(uid).onSnapshot((s) => {
+    state.myNgo = s.exists ? Object.assign({ id: s.id }, s.data()) : null;
+    renderNgo();
+  }, (e) => console.error("myNgo error:", e)));
+}
+
+function listenAdmin() {
+  if (!configured || !db) return;
+  state.unsubUser.push(db.collection("ngos").orderBy("createdAt", "desc").limit(100).onSnapshot((s) => {
+    state.allNgos = docs(s);
+    renderNgo();
+  }, (e) => console.error("listenAdmin error:", e)));
+}
+
+async function ensureProfile(u) {
+  if (!configured || !db) return;
+  try {
+    const ref = db.collection("users").doc(u.uid);
+    const s = await ref.get();
+    if (!s.exists) {
+      await ref.set({
+        name: state.user ? state.user.name : (u.displayName || "Student"),
+        email: u.email || "",
+        ratingSum: 0,
+        ratingCount: 0,
+        createdAt: Date.now()
+      });
+    }
+  } catch (e) { console.error("ensureProfile error:", e); }
+}
+
+async function checkAdmin(uid) {
+  if (!configured || !db) return;
+  let ok = false;
+  try {
+    const doc = await db.collection("admins").doc(uid).get();
+    ok = doc.exists;
+  } catch (e) {
+    console.error("checkAdmin error:", e);
+    ok = false;
+  }
+  state.isAdmin = ok;
+  if (ok) listenAdmin();
+  renderAuth();
+  refresh();
+}
+
+function afterVerified(u) {
+  ensureProfile(u);
+  checkAdmin(u.uid);
+}
+
   auth.onAuthStateChanged((u) => {
     if (u) {
       state.user = { uid: u.uid, name: u.displayName || (u.email || "").split("@")[0], email: u.email, verified: u.emailVerified };
+      listenUser(u.uid);
+      checkAdmin(u.uid);
+      if (u.emailVerified) afterVerified(u);
     } else {
       state.user = null;
+      state.isAdmin = false;
+      stopUser();
+      state.myReqs = [];
+      state.incoming = [];
+      state.threads = [];
+      state.offers = [];
+      state.myNgo = null;
     }
-    renderAuth(); refresh();
+    renderAuth();
+    refresh();
   });
 } else {
   // Offline/Demo Mode banner
