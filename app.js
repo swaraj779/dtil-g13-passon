@@ -256,10 +256,19 @@ function renderGrid() {
 
   $("#count").textContent = `${list.length} ${list.length === 1 ? "item" : "items"}${zone === "All campus" ? " on campus" : " near " + zone}`;
   
-  let empty = "Nothing matches your search or filters. Try clearing some filters!";
-  if (!state.items.length) empty = "No items posted yet. Be the first to give an item!";
+  if (!list.length) {
+    const isFiltered = q || cat !== "All" || mode !== "all" || size !== "all" || zone !== "All campus";
+    $("#grid").innerHTML = `
+      <div class="empty-state-box">
+        <div class="empty-state-icon">${isFiltered ? "🔍" : "📦"}</div>
+        <h3>${isFiltered ? "No matching items found" : "No items listed yet"}</h3>
+        <p>${isFiltered ? "Try resetting some category or size filters to see more campus listings." : "Be the first in your hostel to give or pass on an item to fellow peers!"}</p>
+        ${isFiltered ? `<button class="btn small" type="button" onclick="state.f.cat='All';state.f.mode='all';state.f.size='all';state.f.q='';$('#q').value='';renderFilters();renderGrid();">Reset Filters</button>` : `<a href="#add" class="btn small primary">+ Give an Item</a>`}
+      </div>`;
+    return;
+  }
 
-  $("#grid").innerHTML = list.length ? list.map((i) => `
+  $("#grid").innerHTML = list.map((i) => `
     <button class="card" data-open="${esc(i.id)}" type="button">
       ${thumb(i)}
       <div class="card-b">
@@ -267,7 +276,7 @@ function renderGrid() {
         <h3>${esc(i.title)}</h3>
         <span class="meta">${esc(i.zone)} · ${ago(i.createdAt)}</span>
       </div>
-    </button>`).join("") : `<div class="empty">${esc(empty)}</div>`;
+    </button>`).join("");
 }
 
 /* ---------- Feature 7: Campus Request Board ---------- */
@@ -1336,11 +1345,20 @@ $("#dismissReminderBtn").onclick = () => {
   $("#reminderBanner").hidden = true;
 };
 
-/* ---------- Routing ---------- */
+/* ---------- Routing & Dynamic Titles ---------- */
 const TABS = ["browse", "requests", "add", "ngo", "me"];
+const TAB_TITLES = {
+  browse: "Browse Campus Items | PassOn",
+  requests: "Campus Needs & Request Board | PassOn",
+  add: "Post an Item in 30s | PassOn",
+  ngo: "NGO Connect & Donations | PassOn",
+  me: "My Activity & Eco Karma | PassOn"
+};
+
 function currentTab() { const h = location.hash.slice(1); return TABS.includes(h) ? h : "browse"; }
 function route() {
   const tab = currentTab();
+  document.title = TAB_TITLES[tab] || "PassOn – Campus Give, Swap & Sell";
   TABS.forEach((t) => {
     const el = $("#view-" + t);
     if (el) el.hidden = t !== tab;
@@ -1402,6 +1420,30 @@ updateNotifBadge();
 route();
 
 $("#themeBtn").onclick = () => setTheme(effectiveTheme() === "dark" ? "light" : "dark");
+
+/* ---------- Startup Polish: Back to Top & Network Detection ---------- */
+const btt = $("#backToTopBtn");
+if (btt) {
+  window.addEventListener("scroll", () => {
+    if (window.scrollY > 320) {
+      btt.classList.add("visible");
+    } else {
+      btt.classList.remove("visible");
+    }
+  }, { passive: true });
+  btt.onclick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+}
+
+// Online / Offline Connectivity Monitor
+function updateOnlineStatus() {
+  const ob = $("#offlineBanner");
+  if (ob) ob.hidden = navigator.onLine;
+}
+window.addEventListener("online", updateOnlineStatus);
+window.addEventListener("offline", updateOnlineStatus);
+updateOnlineStatus();
 
 if (configured && db) {
   $("#setupBanner").hidden = true;

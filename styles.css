@@ -491,11 +491,180 @@ img.proof { display: block; max-width: 100%; max-height: 360px; margin: 10px 0; 
 .empty { padding: 36px 20px; border: 1px dashed var(--line); border-radius: var(--radius-md); color: var(--muted); text-align: center; grid-column: 1 / -1; font-size: 0.92rem; }
 .gate { margin-top: 16px; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius-md); display: grid; gap: 12px; justify-items: start; max-width: 580px; }
 
-/* Responsive */
+/* Responsive & Micro-interactions */
 @media (max-width: 680px) {
   .search-sort-row { grid-template-columns: 1fr; }
   .sort-label select { max-width: none; }
   .size-toggle-group { grid-template-columns: 1fr; }
   .row2 { grid-template-columns: 1fr; }
   .reminder-banner { flex-direction: column; align-items: flex-start; }
+}
+
+/* ==========================================================================
+   Startups-Grade Polish (De-AI & Anti-Vibecoded Enhancements)
+   ========================================================================== */
+
+/* 1. Global Viewport & Micro-Tactile Feedback */
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+}
+body {
+  overflow-x: clip;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Button & Card Tactile Depth (Zero generic float) */
+.btn:active, .chip:active, .give-btn:active, .fab-give:active {
+  transform: scale(0.975);
+  transition: transform 0.08s ease;
+}
+.card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--line-strong);
+}
+
+/* 2. Skeleton Shimmer Loader */
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.skeleton-img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  background: linear-gradient(90deg, var(--surface-subtle) 25%, var(--surface-hover) 50%, var(--surface-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--surface-subtle) 25%, var(--surface-hover) 50%, var(--surface-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.skeleton-line.title { height: 18px; width: 75%; }
+.skeleton-line.half { width: 45%; }
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 3. Back to Top Floating Button */
+.back-to-top {
+  position: fixed;
+  right: 20px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  z-index: 40;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s, border-color 0.2s;
+}
+.back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.back-to-top:hover {
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+.back-to-top:active {
+  transform: scale(0.92);
+}
+
+/* 4. Connectivity / Offline Banner */
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #dc2626;
+  color: #ffffff;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* 5. Enhanced Empty States */
+.empty-state-box {
+  padding: 48px 24px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--muted);
+  text-align: center;
+  grid-column: 1 / -1;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.empty-state-icon {
+  font-size: 2.5rem;
+  background: var(--surface-subtle);
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+}
+.empty-state-box h3 {
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+.empty-state-box p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 400px;
+  margin: 0;
+}
+
+/* Focus Visibility / Keyboard Accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
